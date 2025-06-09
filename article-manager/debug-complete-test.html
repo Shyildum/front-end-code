@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>完整流程调试 - ArticleManager API</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .info { background: #e3f2fd; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #2196f3; }
+        .warning { background: #fff3e0; border-left-color: #ff9800; }
+        .success { background: #e8f5e8; border-left-color: #4caf50; }
+        .error { background: #ffebee; border-left-color: #f44336; }
+        button { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 8px; font-size: 14px; }
+        button:hover { background: #0056b3; }
+        button.secondary { background: #6c757d; }
+        button.secondary:hover { background: #545b62; }
+        pre { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+        .step { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .step h3 { margin-top: 0; color: #333; }
+        .result { min-height: 100px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 ArticleManager API调用完整调试</h1>
+        
+        <div class="info">
+            <h3>📋 调试说明</h3>
+            <p>这个页面将完整模拟ArticleManager组件的API调用流程，包括：</p>
+            <ul>
+                <li>认证状态检查</li>
+                <li>API请求发送</li>
+                <li>响应数据处理</li>
+                <li>字段映射和数据转换</li>
+            </ul>
+            <p><strong>请打开浏览器开发者工具的Console标签查看详细日志</strong></p>
+        </div>
+        
+        <div class="step">
+            <h3>🚀 开始调试</h3>
+            <button onclick="runCompleteTest()">开始完整流程测试</button>
+            <button onclick="checkAuthOnly()" class="secondary">仅检查认证状态</button>
+            <button onclick="clearAll()" class="secondary">清空结果</button>
+        </div>
+        
+        <div class="step">
+            <h3>📊 调试结果</h3>
+            <div id="result" class="result">点击上方按钮开始调试...</div>
+        </div>
+        
+        <div class="step">
+            <h3>🛠️ 可能的解决方案</h3>
+            <div class="info">
+                <h4>如果API调用失败：</h4>
+                <ul>
+                    <li><strong>401错误：</strong> 检查userId是否正确，或重新登录</li>
+                    <li><strong>404错误：</strong> 检查后端服务是否启动，API路径是否正确</li>
+                    <li><strong>500错误：</strong> 后端服务内部错误，检查后端日志</li>
+                    <li><strong>网络错误：</strong> 检查Vite代理配置，确保后端服务运行在正确端口</li>
+                </ul>
+            </div>
+            
+            <div class="warning">
+                <h4>如果文章列表为空：</h4>
+                <ul>
+                    <li>数据库中可能没有该用户的文章</li>
+                    <li>认证用户ID可能不正确</li>
+                    <li>后端API可能返回了错误的数据结构</li>
+                    <li>字段映射可能存在问题</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function runCompleteTest() {
+            console.clear();
+            document.getElementById('result').innerHTML = '<p>🔄 正在运行完整测试，请查看控制台...</p>';
+            
+            // 加载并执行完整调试脚本
+            const script = document.createElement('script');
+            script.src = './debug-complete-flow.js';
+            script.onload = () => {
+                setTimeout(() => {
+                    document.head.removeChild(script);
+                }, 2000);
+            };
+            document.head.appendChild(script);
+        }
+        
+        function checkAuthOnly() {
+            const userId = localStorage.getItem('userId');
+            const user = localStorage.getItem('user');
+            
+            let html = '<h4>🔐 认证状态检查结果：</h4>';
+            
+            if (!userId) {
+                html += '<div class="error"><p>❌ 没有找到userId</p><p>需要重新登录</p></div>';
+            } else {
+                html += `<div class="success"><p>✅ 找到userId: ${userId}</p></div>`;
+            }
+            
+            if (!user) {
+                html += '<div class="warning"><p>⚠️ 没有找到用户信息</p></div>';
+            } else {
+                try {
+                    const userObj = JSON.parse(user);
+                    html += '<div class="success"><p>✅ 用户信息正常</p><pre>' + JSON.stringify(userObj, null, 2) + '</pre></div>';
+                } catch (e) {
+                    html += '<div class="error"><p>❌ 用户信息JSON格式错误</p></div>';
+                }
+            }
+            
+            document.getElementById('result').innerHTML = html;
+            
+            console.log('🔐 认证状态详情:', { userId, user });
+        }
+        
+        function clearAll() {
+            console.clear();
+            document.getElementById('result').innerHTML = '点击上方按钮开始调试...';
+        }
+        
+        // 页面加载时自动检查认证状态
+        window.addEventListener('load', () => {
+            setTimeout(checkAuthOnly, 500);
+        });
+    </script>
+</body>
+</html>

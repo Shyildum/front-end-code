@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分类API调试工具</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .debug-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .debug-title {
+            color: #333;
+            border-bottom: 2px solid #007acc;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; border-left: 4px solid #28a745; }
+        .error { background: #f8d7da; border-left: 4px solid #dc3545; }
+        .warning { background: #fff3cd; border-left: 4px solid #ffc107; }
+        .info { background: #d1ecf1; border-left: 4px solid #17a2b8; }
+        .code {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #005f99;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        .api-result {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 分类API调试工具</h1>
+    
+    <div class="debug-section">
+        <h3 class="debug-title">📋 认证状态检查</h3>
+        <div id="auth-status"></div>
+        <button onclick="checkAuthStatus()">检查认证状态</button>
+        <button onclick="simulateLogin()">模拟登录</button>
+    </div>
+
+    <div class="debug-section">
+        <h3 class="debug-title">🌐 分类API测试</h3>
+        <div class="test-grid">
+            <div>
+                <h4>获取分类树 (根节点)</h4>
+                <button onclick="testCategoryTree(0)">测试 /categories/tree/0</button>
+                <div id="tree-result" class="api-result"></div>
+            </div>
+            <div>
+                <h4>获取所有分类</h4>
+                <button onclick="testGetCategories()">测试 /categories/</button>
+                <div id="categories-result" class="api-result"></div>
+            </div>
+            <div>
+                <h4>创建测试分类</h4>
+                <button onclick="testCreateCategory()">测试创建分类</button>
+                <div id="create-result" class="api-result"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="debug-section">
+        <h3 class="debug-title">🔧 网络请求调试</h3>
+        <div id="network-debug"></div>
+        <button onclick="testNetworkConnectivity()">测试网络连接</button>
+    </div>
+
+    <script type="module">
+        // 导入API函数
+        import { categoryAPI, authAPI } from './src/services/api.js';
+        
+        // 将API函数挂载到window对象，供HTML中的事件处理器使用
+        window.categoryAPI = categoryAPI;
+        window.authAPI = authAPI;
+        
+        // 全局变量
+        let debugInfo = {
+            authStatus: {},
+            apiResults: {}
+        };
+        
+        // 检查认证状态
+        window.checkAuthStatus = function() {
+            const statusDiv = document.getElementById('auth-status');
+            
+            try {
+                const userId = localStorage.getItem('userId');
+                const user = localStorage.getItem('user');
+                const accessToken = localStorage.getItem('accessToken');
+                const refreshToken = localStorage.getItem('refreshToken');
+                
+                debugInfo.authStatus = {
+                    userId,
+                    user,
+                    accessToken,
+                    refreshToken,
+                    hasUserId: !!userId,
+                    timestamp: new Date().toISOString()
+                };
+                
+                let html = '<h4>📊 LocalStorage 状态:</h4>';
+                
+                if (!userId) {
+                    html += '<div class="status error">❌ 未找到 userId - 用户可能未登录</div>';
+                } else {
+                    html += `<div class="status success">✅ userId: ${userId}</div>`;
+                }
+                
+                if (user) {
+                    try {
+                        const userObj = JSON.parse(user);
+                        html += `<div class="status info">👤 用户信息: ${userObj.username || userObj.email || '未知'}</div>`;
+                    } catch (e) {
+                        html += `<div class="status warning">⚠️ 用户信息格式错误: ${user}</div>`;
+                    }
+                }
+                
+                html += '<div class="code">' + JSON.stringify(debugInfo.authStatus, null, 2) + '</div>';
+                statusDiv.innerHTML = html;
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ 检查认证状态失败: ${error.message}</div>`;
+            }
+        };
+        
+        // 模拟登录
+        window.simulateLogin = function() {
+            const testUserId = 'test-user-' + Date.now();
+            const testUser = {
+                userId: testUserId,
+                username: 'testuser',
+                email: 'test@example.com'
+            };
+            
+            localStorage.setItem('userId', testUserId);
+            localStorage.setItem('user', JSON.stringify(testUser));
+            
+            document.getElementById('auth-status').innerHTML = 
+                '<div class="status success">✅ 已设置测试用户ID: ' + testUserId + '</div>';
+        };
+        
+        // 测试分类树API
+        window.testCategoryTree = async function(categoryId = 0) {
+            const resultDiv = document.getElementById('tree-result');
+            resultDiv.innerHTML = '<div class="status info">🔄 正在测试分类树API...</div>';
+            
+            try {
+                console.log('🧪 测试分类树API，categoryId:', categoryId);
+                
+                // 检查认证
+                const userId = localStorage.getItem('userId');
+                if (!userId) {
+                    throw new Error('未找到userId，请先模拟登录');
+                }
+                
+                // 直接调用fetch测试
+                const response = await fetch(`/api/v1/categories/tree/${categoryId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Id': userId
+                    }
+                });
+                
+                console.log('📡 分类树API响应状态:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    ok: response.ok
+                });
+                
+                const responseText = await response.text();
+                let responseData;
+                
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch (parseError) {
+                    responseData = { raw: responseText };
+                }
+                
+                const result = {
+                    success: response.ok,
+                    url: `/categories/tree/${categoryId}`,
+                    status: response.status,
+                    statusText: response.statusText,
+                    response: responseData,
+                    timestamp: new Date().toISOString()
+                };
+                
+                debugInfo.apiResults.categoryTree = result;
+                
+                if (response.ok) {
+                    let categoriesCount = 0;
+                    if (Array.isArray(responseData)) {
+                        categoriesCount = responseData.length;
+                    } else if (responseData.data && Array.isArray(responseData.data)) {
+                        categoriesCount = responseData.data.length;
+                    }
+                    
+                    resultDiv.innerHTML = `
+                        <div class="status success">✅ 分类树API调用成功</div>
+                        <p><strong>分类数量:</strong> ${categoriesCount}</p>
+                        <div class="code">${JSON.stringify(result, null, 2)}</div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status error">❌ 分类树API调用失败 (${response.status})</div>
+                        <div class="code">${JSON.stringify(result, null, 2)}</div>
+                    `;
+                }
+                
+                console.log('✅ 分类树API测试完成:', result);
+                
+            } catch (error) {
+                const result = {
+                    success: false,
+                    url: `/categories/tree/${categoryId}`,
+                    error: error.message,
+                    timestamp: new Date().toISOString()
+                };
+                
+                debugInfo.apiResults.categoryTree = result;
+                
+                resultDiv.innerHTML = `
+                    <div class="status error">❌ 分类树API调用异常</div>
+                    <div class="code">${JSON.stringify(result, null, 2)}</div>
+                `;
+                
+                console.error('❌ 分类树API测试失败:', error);
+            }
+        };
+        
+        // 测试获取所有分类
+        window.testGetCategories = async function() {
+            const resultDiv = document.getElementById('categories-result');
+            resultDiv.innerHTML = '<div class="status info">🔄 正在测试获取分类API...</div>';
+            
+            try {
+                console.log('🧪 测试获取所有分类API');
+                const response = await categoryAPI.getCategories();
+                
+                const result = {
+                    success: true,
+                    url: '/categories/',
+                    response: response,
+                    timestamp: new Date().toISOString()
+                };
+                
+                debugInfo.apiResults.getCategories = result;
+                
+                resultDiv.innerHTML = `
+                    <div class="status success">✅ 获取分类API调用成功</div>
+                    <div class="code">${JSON.stringify(result, null, 2)}</div>
+                `;
+                
+                console.log('✅ 获取分类API测试成功:', response);
+                
+            } catch (error) {
+                const result = {
+                    success: false,
+                    url: '/categories/',
+                    error: error.message,
+                    response: error.response?.data,
+                    status: error.response?.status,
+                    timestamp: new Date().toISOString()
+                };
+                
+                debugInfo.apiResults.getCategories = result;
+                
+                resultDiv.innerHTML = `
+                    <div class="status error">❌ 获取分类API调用失败</div>
+                    <div class="code">${JSON.stringify(result, null, 2)}</div>
+                `;
+                
+                console.error('❌ 获取分类API测试失败:', error);
+            }
+        };
+        
+        // 测试创建分类
+        window.testCreateCategory = async function() {
+            const resultDiv = document.getElementById('create-result');
+            resultDiv.innerHTML = '<div class="status info">🔄 正在测试创建分类API...</div>';
+            
+            try {
+                const testCategory = {
+                    name: '测试分类-' + Date.now(),
+                    parentId: 0
+                };
+                
+                console.log('🧪 测试创建分类API，数据:', testCategory);
+                const response = await categoryAPI.createCategory(testCategory);
+                
+                const result = {
+                    success: true,
+                    url: '/categories',
+                    requestData: testCategory,
+                    response: response,
+                    timestamp: new Date().toISOString()
+                };
+                
+                debugInfo.apiResults.createCategory = result;
+                
+                resultDiv.innerHTML = `
+                    <div class="status success">✅ 创建分类API调用成功</div>
+                    <div class="code">${JSON.stringify(result, null, 2)}</div>
+                `;
+                
+                console.log('✅ 创建分类API测试成功:', response);
+                
+            } catch (error) {
+                const result = {
+                    success: false,
+                    url: '/categories',
+                    error: error.message,
+                    response: error.response?.data,
+                    status: error.response?.status,
+                    timestamp: new Date().toISOString()
+                };
+                
+                debugInfo.apiResults.createCategory = result;
+                
+                resultDiv.innerHTML = `
+                    <div class="status error">❌ 创建分类API调用失败</div>
+                    <div class="code">${JSON.stringify(result, null, 2)}</div>
+                `;
+                
+                console.error('❌ 创建分类API测试失败:', error);
+            }
+        };
+        
+        // 测试网络连接
+        window.testNetworkConnectivity = async function() {
+            const debugDiv = document.getElementById('network-debug');
+            debugDiv.innerHTML = '<div class="status info">🔄 正在测试网络连接...</div>';
+            
+            try {
+                // 测试基础连接
+                const baseURL = '/api/v1';
+                const testURL = `${baseURL}/categories/tree/0`;
+                
+                console.log('🌐 测试网络连接到:', testURL);
+                
+                const response = await fetch(testURL, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Id': localStorage.getItem('userId') || 'test-user'
+                    }
+                });
+                
+                const responseData = await response.text();
+                
+                const result = {
+                    url: testURL,
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries()),
+                    data: responseData,
+                    timestamp: new Date().toISOString()
+                };
+                
+                if (response.ok) {
+                    debugDiv.innerHTML = `
+                        <div class="status success">✅ 网络连接正常</div>
+                        <div class="code">${JSON.stringify(result, null, 2)}</div>
+                    `;
+                } else {
+                    debugDiv.innerHTML = `
+                        <div class="status warning">⚠️ 服务器响应异常 (${response.status})</div>
+                        <div class="code">${JSON.stringify(result, null, 2)}</div>
+                    `;
+                }
+                
+            } catch (error) {
+                debugDiv.innerHTML = `
+                    <div class="status error">❌ 网络连接失败: ${error.message}</div>
+                    <div class="code">${JSON.stringify({
+                        error: error.message,
+                        timestamp: new Date().toISOString()
+                    }, null, 2)}</div>
+                `;
+            }
+        };
+        
+        // 页面加载时自动检查认证状态
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+        });
+        
+        // 导出调试信息到全局
+        window.getDebugInfo = function() {
+            return debugInfo;
+        };
+        
+        console.log('🔍 分类API调试工具已加载');
+        console.log('💡 使用 getDebugInfo() 获取所有调试信息');
+    </script>
+</body>
+</html>

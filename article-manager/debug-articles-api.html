@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文章API调试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        .button:hover { background: #0056b3; }
+        .result { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; white-space: pre-wrap; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+    </style>
+</head>
+<body>
+    <h1>文章API调试工具</h1>
+    
+    <div class="section">
+        <h2>1. 当前认证状态</h2>
+        <button class="button" onclick="checkAuthStatus()">检查认证状态</button>
+        <div id="authResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>2. 手动设置用户ID (用于测试)</h2>
+        <input type="text" id="userIdInput" placeholder="输入用户ID (例如: 5)" style="padding: 8px; margin: 5px;">
+        <button class="button" onclick="setUserId()">设置用户ID</button>
+        <div id="setUserIdResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>3. 测试文章API</h2>
+        <button class="button" onclick="testArticlesAPI()">调用 GET /articles/all/1/10</button>
+        <button class="button" onclick="testDirectAPI()">直接HTTP请求测试</button>
+        <div id="apiResult" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>4. 网络连接测试</h2>
+        <button class="button" onclick="testBackendConnection()">测试后端连接</button>
+        <div id="connectionResult" class="result"></div>
+    </div>
+
+    <script>
+        // 检查认证状态
+        function checkAuthStatus() {
+            const userId = localStorage.getItem('userId');
+            const user = localStorage.getItem('user');
+            const token = localStorage.getItem('token');
+            
+            const result = {
+                userId: userId,
+                hasUser: !!user,
+                userInfo: user ? JSON.parse(user) : null,
+                hasToken: !!token,
+                tokenPreview: token ? token.substring(0, 20) + '...' : null,
+                timestamp: new Date().toLocaleString()
+            };
+            
+            document.getElementById('authResult').textContent = JSON.stringify(result, null, 2);
+            document.getElementById('authResult').className = userId ? 'result success' : 'result error';
+        }
+        
+        // 设置用户ID
+        function setUserId() {
+            const userId = document.getElementById('userIdInput').value.trim();
+            if (!userId) {
+                document.getElementById('setUserIdResult').textContent = '请输入用户ID';
+                document.getElementById('setUserIdResult').className = 'result error';
+                return;
+            }
+            
+            localStorage.setItem('userId', userId);
+            localStorage.setItem('user', JSON.stringify({
+                userId: parseInt(userId),
+                username: 'test_user',
+                email: 'test@example.com'
+            }));
+            
+            document.getElementById('setUserIdResult').textContent = `用户ID已设置为: ${userId}`;
+            document.getElementById('setUserIdResult').className = 'result success';
+        }
+        
+        // 测试文章API
+        async function testArticlesAPI() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.textContent = '正在调用API...';
+            resultDiv.className = 'result warning';
+            
+            try {
+                const userId = localStorage.getItem('userId');
+                if (!userId) {
+                    throw new Error('请先设置用户ID');
+                }
+                
+                // 使用fetch直接调用API
+                const response = await fetch('/api/v1/articles/all/1/10', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Id': userId
+                    }
+                });
+                
+                const responseText = await response.text();
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch (e) {
+                    responseData = responseText;
+                }
+                
+                const result = {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries()),
+                    data: responseData,
+                    url: response.url
+                };
+                
+                resultDiv.textContent = JSON.stringify(result, null, 2);
+                resultDiv.className = response.ok ? 'result success' : 'result error';
+                
+            } catch (error) {
+                resultDiv.textContent = `API调用失败: ${error.message}\n\n详细错误:\n${error.stack}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        // 直接HTTP请求测试
+        async function testDirectAPI() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.textContent = '正在进行直接HTTP请求测试...';
+            resultDiv.className = 'result warning';
+            
+            try {
+                const userId = localStorage.getItem('userId') || '5'; // 默认用户ID
+                
+                // 测试多个可能的端点
+                const endpoints = [
+                    '/api/v1/articles/all/1/10',
+                    'http://localhost:8888/api/v1/articles/all/1/10',
+                    '/articles/all/1/10'
+                ];
+                
+                const results = [];
+                
+                for (const endpoint of endpoints) {
+                    try {
+                        const response = await fetch(endpoint, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-User-Id': userId
+                            }
+                        });
+                        
+                        const text = await response.text();
+                        results.push({
+                            endpoint,
+                            status: response.status,
+                            statusText: response.statusText,
+                            response: text.substring(0, 500) + (text.length > 500 ? '...' : '')
+                        });
+                    } catch (error) {
+                        results.push({
+                            endpoint,
+                            error: error.message
+                        });
+                    }
+                }
+                
+                resultDiv.textContent = JSON.stringify(results, null, 2);
+                resultDiv.className = 'result success';
+                
+            } catch (error) {
+                resultDiv.textContent = `测试失败: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        // 测试后端连接
+        async function testBackendConnection() {
+            const resultDiv = document.getElementById('connectionResult');
+            resultDiv.textContent = '正在测试后端连接...';
+            resultDiv.className = 'result warning';
+            
+            try {
+                // 测试不同的后端端点
+                const testUrls = [
+                    'http://localhost:8888/api/v1/users/info/1',
+                    'http://localhost:8888/health',
+                    'http://localhost:8888/',
+                    '/api/v1/articles/all/1/10'
+                ];
+                
+                const results = [];
+                
+                for (const url of testUrls) {
+                    try {
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            headers: {
+                                'X-User-Id': '5'
+                            }
+                        });
+                        
+                        results.push({
+                            url,
+                            status: response.status,
+                            statusText: response.statusText,
+                            accessible: response.status < 500
+                        });
+                    } catch (error) {
+                        results.push({
+                            url,
+                            error: error.message,
+                            accessible: false
+                        });
+                    }
+                }
+                
+                resultDiv.textContent = JSON.stringify(results, null, 2);
+                resultDiv.className = 'result success';
+                
+            } catch (error) {
+                resultDiv.textContent = `连接测试失败: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        // 页面加载时自动检查认证状态
+        window.onload = function() {
+            checkAuthStatus();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文章管理器</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>文章管理系统</h1>
+        </header>
+        
+        <main>
+            <!-- 添加文章表单 -->
+            <section class="add-article">
+                <h2>添加新文章</h2>
+                <form id="articleForm">
+                    <input type="text" id="title" placeholder="文章标题" required>
+                    <textarea id="content" placeholder="文章内容" required></textarea>
+                    <input type="text" id="author" placeholder="作者" required>
+                    <button type="submit">添加文章</button>
+                </form>
+            </section>
+            
+            <!-- 文章列表 -->
+            <section class="articles">66
+                <h2>文章列表</h2>
+                <div id="articleList"></div>
+            </section>
+        </main>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

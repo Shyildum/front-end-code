@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>直接测试文章API</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .info { background: #d1ecf1; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>直接测试文章API调用</h1>
+    
+    <div class="info">
+        <p><strong>说明:</strong> 这个页面将直接测试 <code>GET /api/v1/articles/all/1/10</code> API调用</p>
+        <p><strong>请打开浏览器开发者工具的Console标签查看详细日志</strong></p>
+    </div>
+    
+    <button onclick="runTest()">🚀 开始测试API</button>
+    <button onclick="checkStorage()">🔍 检查localStorage</button>
+    <button onclick="clearConsole()">🧹 清空控制台</button>
+    
+    <div id="result"></div>
+
+    <script>
+        function runTest() {
+            console.clear();
+            
+            // 加载并执行调试脚本
+            const script = document.createElement('script');
+            script.src = './debug-direct-api.js';
+            document.head.appendChild(script);
+            
+            // 移除脚本以避免重复加载
+            setTimeout(() => {
+                document.head.removeChild(script);
+            }, 1000);
+        }
+        
+        function checkStorage() {
+            const userId = localStorage.getItem('userId');
+            const user = localStorage.getItem('user');
+            
+            console.log('💾 localStorage内容检查:');
+            console.log('userId:', userId);
+            console.log('user:', user);
+            
+            if (user) {
+                try {
+                    console.log('用户信息解析:', JSON.parse(user));
+                } catch (e) {
+                    console.error('用户信息JSON解析失败:', e);
+                }
+            }
+            
+            // 显示在页面上
+            document.getElementById('result').innerHTML = `
+                <h3>localStorage内容:</h3>
+                <p><strong>userId:</strong> ${userId || '❌ 未找到'}</p>
+                <p><strong>user:</strong> ${user ? '✅ 已找到' : '❌ 未找到'}</p>
+                ${user ? `<pre>${JSON.stringify(JSON.parse(user), null, 2)}</pre>` : ''}
+            `;
+        }
+        
+        function clearConsole() {
+            console.clear();
+            document.getElementById('result').innerHTML = '';
+        }
+        
+        // 页面加载时自动检查存储
+        window.addEventListener('load', checkStorage);
+    </script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>检查API调用</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        .warning { background-color: #fff3cd; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { padding: 8px 16px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>检查文章API调用状态</h1>
+    
+    <div class="section">
+        <h2>1. 认证状态检查</h2>
+        <div id="auth-status"></div>
+    </div>
+    
+    <div class="section">
+        <h2>2. API配置检查</h2>
+        <div id="api-config"></div>
+    </div>
+    
+    <div class="section">
+        <h2>3. 手动测试获取文章API</h2>
+        <button onclick="testGetArticlesAPI()">测试 GET /articles/all/1/10</button>
+        <div id="api-test-result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>4. 网络请求监控</h2>
+        <button onclick="startMonitoring()">开始监控网络请求</button>
+        <button onclick="stopMonitoring()">停止监控</button>
+        <div id="network-monitor"></div>
+    </div>
+
+    <script>
+        // 检查认证状态
+        function checkAuthStatus() {
+            const userId = localStorage.getItem('userId');
+            const user = localStorage.getItem('user');
+            
+            let html = '<h3>localStorage内容:</h3>';
+            html += `<p><strong>userId:</strong> ${userId || '❌ 未找到'}</p>`;
+            html += `<p><strong>user:</strong> ${user || '❌ 未找到'}</p>`;
+            
+            if (user) {
+                try {
+                    const userObj = JSON.parse(user);
+                    html += '<pre>' + JSON.stringify(userObj, null, 2) + '</pre>';
+                } catch (e) {
+                    html += '<p class="error">用户信息JSON格式错误</p>';
+                }
+            }
+            
+            document.getElementById('auth-status').innerHTML = html;
+        }
+        
+        // 检查API配置
+        function checkAPIConfig() {
+            let html = '<h3>当前环境配置:</h3>';
+            html += `<p><strong>当前域名:</strong> ${window.location.origin}</p>`;
+            html += `<p><strong>当前路径:</strong> ${window.location.pathname}</p>`;
+            
+            // 检查Vite环境变量（在生产环境可能不可用）
+            if (typeof import !== 'undefined') {
+                try {
+                    html += `<p><strong>VITE_API_BASE_URL:</strong> ${import.meta?.env?.VITE_API_BASE_URL || '未设置'}</p>`;
+                } catch (e) {
+                    html += '<p>无法获取Vite环境变量</p>';
+                }
+            }
+            
+            document.getElementById('api-config').innerHTML = html;
+        }
+        
+        // 测试获取文章API
+        async function testGetArticlesAPI() {
+            const resultDiv = document.getElementById('api-test-result');
+            resultDiv.innerHTML = '<p>🔄 正在测试API...</p>';
+            
+            const userId = localStorage.getItem('userId');
+            if (!userId) {
+                resultDiv.innerHTML = '<div class="error"><p>❌ 测试失败：没有找到userId</p></div>';
+                return;
+            }
+            
+            try {
+                const url = '/api/v1/articles/all/1/10';
+                console.log('📡 测试API调用:', { url, userId });
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Id': userId
+                    }
+                });
+                
+                console.log('📥 API响应状态:', response.status, response.statusText);
+                
+                let html = `<h4>响应状态: ${response.status} ${response.statusText}</h4>`;
+                html += `<p><strong>请求URL:</strong> ${url}</p>`;
+                html += `<p><strong>请求头 X-User-Id:</strong> ${userId}</p>`;
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    html += '<div class="success">';
+                    html += '<h4>✅ API调用成功</h4>';
+                    html += `<p><strong>返回数据类型:</strong> ${typeof data}</p>`;
+                    
+                    if (data && typeof data === 'object') {
+                        html += `<p><strong>数据结构:</strong></p>`;
+                        html += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                        
+                        if (data.list && Array.isArray(data.list)) {
+                            html += `<p><strong>文章数量:</strong> ${data.list.length}</p>`;
+                            html += `<p><strong>总数:</strong> ${data.total}</p>`;
+                        } else if (Array.isArray(data)) {
+                            html += `<p><strong>文章数量:</strong> ${data.length}</p>`;
+                        }
+                    }
+                    html += '</div>';
+                } else {
+                    const errorText = await response.text();
+                    html += '<div class="error">';
+                    html += '<h4>❌ API调用失败</h4>';
+                    html += `<p><strong>错误信息:</strong> ${errorText}</p>`;
+                    html += '</div>';
+                }
+                
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                console.error('❌ API测试错误:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ 网络错误</h4>
+                        <p><strong>错误信息:</strong> ${error.message}</p>
+                        <p><strong>可能原因:</strong></p>
+                        <ul>
+                            <li>后端服务未运行</li>
+                            <li>代理配置错误</li>
+                            <li>网络连接问题</li>
+                        </ul>
+                    </div>
+                `;
+            }
+        }
+        
+        // 网络请求监控
+        let originalFetch = window.fetch;
+        let isMonitoring = false;
+        let requestLog = [];
+        
+        function startMonitoring() {
+            if (isMonitoring) return;
+            
+            isMonitoring = true;
+            requestLog = [];
+            
+            window.fetch = function(...args) {
+                const url = args[0];
+                const options = args[1] || {};
+                
+                console.log('🌐 监控到网络请求:', { url, options });
+                
+                const logEntry = {
+                    timestamp: new Date().toLocaleTimeString(),
+                    url: url,
+                    method: options.method || 'GET',
+                    headers: options.headers || {}
+                };
+                
+                requestLog.push(logEntry);
+                updateNetworkMonitor();
+                
+                return originalFetch.apply(this, args)
+                    .then(response => {
+                        logEntry.status = response.status;
+                        logEntry.statusText = response.statusText;
+                        updateNetworkMonitor();
+                        return response;
+                    })
+                    .catch(error => {
+                        logEntry.error = error.message;
+                        updateNetworkMonitor();
+                        throw error;
+                    });
+            };
+            
+            document.getElementById('network-monitor').innerHTML = '<p>✅ 网络监控已启动</p>';
+        }
+        
+        function stopMonitoring() {
+            isMonitoring = false;
+            window.fetch = originalFetch;
+            document.getElementById('network-monitor').innerHTML = '<p>⏹️ 网络监控已停止</p>';
+        }
+        
+        function updateNetworkMonitor() {
+            if (!isMonitoring) return;
+            
+            let html = '<h4>网络请求日志:</h4>';
+            
+            if (requestLog.length === 0) {
+                html += '<p>暂无请求记录</p>';
+            } else {
+                html += '<div style="max-height: 300px; overflow-y: auto;">';
+                requestLog.slice(-10).forEach(req => {
+                    const isArticleAPI = req.url.includes('/articles/');
+                    const statusClass = req.status >= 200 && req.status < 300 ? 'success' : 
+                                       req.error ? 'error' : 'warning';
+                    
+                    html += `<div class="${statusClass}" style="margin: 5px 0; padding: 8px; border-radius: 3px;">`;
+                    html += `<strong>${req.timestamp}</strong> - ${req.method} ${req.url}`;
+                    if (req.status) {
+                        html += ` → ${req.status} ${req.statusText}`;
+                    }
+                    if (req.error) {
+                        html += ` → ❌ ${req.error}`;
+                    }
+                    if (isArticleAPI) {
+                        html += ' 🎯';
+                    }
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            
+            document.getElementById('network-monitor').innerHTML = html;
+        }
+        
+        // 页面加载时执行检查
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+            checkAPIConfig();
+        });
+    </script>
+</body>
+</html>
