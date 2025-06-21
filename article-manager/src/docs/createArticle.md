@@ -239,7 +239,7 @@ const handleCreateArticle = async () => {
   try {
     const response = await articleAPI.createArticle(article)
     
-    if (response.code === 0) {
+    if (response.code === 201) {
       emit('created', response.data)
       console.log('文章创建成功:', response.data)
       

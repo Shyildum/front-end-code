@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>评论滚动功能测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .content {
+            display: flex;
+            height: calc(100vh - 160px);
+        }
+        
+        .left-panel {
+            width: 300px;
+            background: #f8fafc;
+            border-right: 1px solid #e2e8f0;
+            padding: 20px;
+        }
+        
+        .main-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .article-content {
+            flex: 1;
+            padding: 20px;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            overflow-y: auto;
+        }
+        
+        .comments-section {
+            height: 400px;
+            background: #fafafa;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        /* 模拟评论样式 */
+        .comments-container {
+            height: 100%;
+            padding: 20px;
+        }
+        
+        .comments-list {
+            max-height: 300px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            background: #fafafa;
+            border: 1px solid #e5e7eb;
+            position: relative;
+        }
+        
+        .comments-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .comments-list::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+            margin: 4px 0;
+        }
+        
+        .comments-list::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            border: 1px solid #f1f5f9;
+        }
+        
+        .comments-list::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        }
+        
+        .comment-item {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .comment-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .comment-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .comment-author {
+            font-weight: 600;
+            color: #1f2937;
+        }
+        
+        .comment-time {
+            font-size: 12px;
+            color: #6b7280;
+        }
+        
+        .comment-content {
+            line-height: 1.5;
+            color: #374151;
+        }
+        
+        .test-buttons {
+            padding: 20px;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #374151;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .status.success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .status.warning {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fed7aa;
+        }
+        
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 评论滚动功能测试</h1>
+            <p>测试评论区域的滚动功能和布局优化</p>
+        </div>
+        
+        <div class="content">
+            <div class="left-panel">
+                <h3>🔧 测试控制</h3>
+                
+                <div class="status info">
+                    <strong>测试说明：</strong><br>
+                    这个页面模拟了文章管理器中的评论区域，用于测试滚动功能是否正常工作。
+                </div>
+                
+                <button class="btn-primary" onclick="generateComments()">生成测试评论</button>
+                <button class="btn-secondary" onclick="clearComments()">清空评论</button>
+                <button class="btn-secondary" onclick="testScroll()">测试滚动</button>
+                <button class="btn-secondary" onclick="analyzeLayout()">分析布局</button>
+                
+                <div id="status-info"></div>
+            </div>
+            
+            <div class="main-panel">
+                <div class="article-content">
+                    <h2>示例文章标题</h2>
+                    <p>这是一篇示例文章的内容。在真实的应用中，这里会显示文章的完整内容。</p>
+                    <p>文章内容区域应该占据足够的空间，让用户可以舒适地阅读。</p>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+                    <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+                    <p>Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.</p>
+                </div>
+                
+                <div class="comments-section">
+                    <div class="comments-container">
+                        <h3>💬 评论区域</h3>
+                        <div class="comments-list" id="commentsList">
+                            <div class="status info">
+                                点击"生成测试评论"按钮来测试滚动功能
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-buttons">
+            <button class="btn-secondary" onclick="simulateVueApp()">模拟Vue应用</button>
+            <button class="btn-secondary" onclick="checkStyles()">检查样式</button>
+            <button class="btn-secondary" onclick="measurePerformance()">性能测试</button>
+        </div>
+    </div>
+
+    <script>
+        let commentCount = 0;
+
+        function generateComments() {
+            const commentsList = document.getElementById('commentsList');
+            commentsList.innerHTML = '';
+            commentCount = 0;
+            
+            // 生成20条测试评论
+            for (let i = 1; i <= 20; i++) {
+                const commentItem = document.createElement('div');
+                commentItem.className = 'comment-item';
+                commentItem.innerHTML = `
+                    <div class="comment-header">
+                        <div class="comment-avatar">${i}</div>
+                        <span class="comment-author">测试用户${i}</span>
+                        <span class="comment-time">${i}小时前</span>
+                    </div>
+                    <div class="comment-content">
+                        这是第 ${i} 条测试评论。Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+                    </div>
+                `;
+                commentsList.appendChild(commentItem);
+                commentCount++;
+            }
+            
+            updateStatus(`✅ 已生成 ${commentCount} 条评论`, 'success');
+            
+            // 检查滚动状态
+            setTimeout(() => {
+                analyzeLayout();
+            }, 100);
+        }
+
+        function clearComments() {
+            const commentsList = document.getElementById('commentsList');
+            commentsList.innerHTML = '<div class="status info">评论已清空</div>';
+            commentCount = 0;
+            updateStatus('🗑️ 评论已清空', 'info');
+        }
+
+        function testScroll() {
+            const commentsList = document.getElementById('commentsList');
+            
+            if (commentCount === 0) {
+                updateStatus('⚠️ 请先生成评论再测试滚动', 'warning');
+                return;
+            }
+            
+            // 滚动测试
+            commentsList.scrollTop = 0;
+            updateStatus('🔄 开始滚动测试...', 'info');
+            
+            setTimeout(() => {
+                commentsList.scrollTop = commentsList.scrollHeight / 2;
+                updateStatus('📍 滚动到中间位置', 'info');
+                
+                setTimeout(() => {
+                    commentsList.scrollTop = commentsList.scrollHeight;
+                    updateStatus('📍 滚动到底部', 'info');
+                    
+                    setTimeout(() => {
+                        commentsList.scrollTop = 0;
+                        updateStatus('✅ 滚动测试完成', 'success');
+                    }, 1000);
+                }, 1000);
+            }, 1000);
+        }
+
+        function analyzeLayout() {
+            const commentsList = document.getElementById('commentsList');
+            const computedStyle = getComputedStyle(commentsList);
+            
+            const info = {
+                scrollHeight: commentsList.scrollHeight,
+                clientHeight: commentsList.clientHeight,
+                offsetHeight: commentsList.offsetHeight,
+                maxHeight: computedStyle.maxHeight,
+                overflowY: computedStyle.overflowY,
+                canScroll: commentsList.scrollHeight > commentsList.clientHeight
+            };
+            
+            console.log('📏 布局分析结果:', info);
+            
+            let statusText = `📊 布局分析结果:<br>`;
+            statusText += `滚动高度: ${info.scrollHeight}px<br>`;
+            statusText += `可视高度: ${info.clientHeight}px<br>`;
+            statusText += `最大高度: ${info.maxHeight}<br>`;
+            statusText += `溢出设置: ${info.overflowY}<br>`;
+            statusText += `可以滚动: ${info.canScroll ? '✅ 是' : '❌ 否'}`;
+            
+            updateStatus(statusText, info.canScroll ? 'success' : 'warning');
+        }
+
+        function checkStyles() {
+            const commentsList = document.getElementById('commentsList');
+            const styles = getComputedStyle(commentsList);
+            
+            const relevantStyles = {
+                maxHeight: styles.maxHeight,
+                overflowY: styles.overflowY,
+                overflowX: styles.overflowX,
+                height: styles.height,
+                boxSizing: styles.boxSizing,
+                padding: styles.padding,
+                border: styles.border,
+                position: styles.position
+            };
+            
+            console.log('🎨 相关样式:', relevantStyles);
+            updateStatus('🎨 样式信息已输出到控制台，请按F12查看', 'info');
+        }
+
+        function simulateVueApp() {
+            updateStatus('🔄 模拟Vue应用环境...', 'info');
+            
+            // 模拟Vue组件的更新过程
+            generateComments();
+            
+            setTimeout(() => {
+                updateStatus('✅ Vue应用环境模拟完成', 'success');
+            }, 1000);
+        }
+
+        function measurePerformance() {
+            const start = performance.now();
+            
+            // 清空并重新生成
+            clearComments();
+            generateComments();
+            
+            // 执行滚动测试
+            testScroll();
+            
+            const end = performance.now();
+            const duration = end - start;
+            
+            updateStatus(`⚡ 性能测试完成，耗时: ${duration.toFixed(2)}ms`, 'success');
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusInfo = document.getElementById('status-info');
+            statusInfo.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        // 页面加载时的初始化
+        window.addEventListener('load', () => {
+            updateStatus('🚀 页面加载完成，可以开始测试', 'success');
+            console.log('📝 评论滚动测试页面已加载');
+            console.log('💡 使用以下功能进行测试:');
+            console.log('  - 生成测试评论');
+            console.log('  - 测试滚动功能');
+            console.log('  - 分析布局信息');
+            console.log('  - 检查CSS样式');
+        });
+    </script>
+</body>
+</html>

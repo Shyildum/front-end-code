@@ -173,8 +173,7 @@ export const userAPI = {  // 处理登录响应的通用方法
 }
 
 // 文章管理相关 API
-export const articleAPI = {
-  // 分页获取用户所有文章 - 使用你实现的API
+export const articleAPI = {  // 分页获取用户所有文章 - 使用你实现的API
   getAllArticles: (pageNum = 1, pageSize = 10, categoryId = null) => {
     const userId = localStorage.getItem('userId')
     console.log(`📡 调用获取用户文章API: /articles/all/${pageNum}/${pageSize}`, {
@@ -198,21 +197,34 @@ export const articleAPI = {
     console.log('📤 发送请求:', { url, params, headers: { 'X-User-Id': userId } })
     
     return api.get(url, { params }).then(response => {
-      console.log('📥 getAllArticles API响应成功:', {
-        status: response.status,
-        dataType: typeof response.data,
-        hasData: !!response.data,
-        dataKeys: response.data ? Object.keys(response.data) : null,
-        isPageInfo: response.data && 'total' in response.data && 'list' in response.data,
-        // 检查时间字段格式
-        sampleTimeFields: response.data?.list?.[0] ? {
-          createTime: response.data.list[0].createTime,
-          updateTime: response.data.list[0].updateTime,
-          hasCreateTime: !!response.data.list[0].createTime,
-          hasUpdateTime: !!response.data.list[0].updateTime
-        } : null
-      })
-      return response
+      console.log('📥 getAllArticles API原始响应:', response)
+      
+      // 处理标准的后端响应格式 {code: 200, message: string, detail: string, data: {...}}
+      if (response && response.code >= 200 && response.code < 300 && response.data) {
+        console.log('✅ 检测到标准响应格式，code:', response.code, '数据类型:', typeof response.data)
+        return response.data
+      }
+      // 处理axios已解包的响应格式
+      else if (response && response.data && response.data.code >= 200 && response.data.code < 300 && response.data.data) {
+        console.log('✅ 检测到axios解包的标准响应格式，code:', response.data.code, '数据类型:', typeof response.data.data)
+        return response.data.data
+      }
+      // 处理直接返回数据的情况（向后兼容）
+      else if (response && response.data && (response.data.list || Array.isArray(response.data))) {
+        console.log('✅ 检测到直接数据格式，类型:', typeof response.data)
+        return response.data
+      }
+      else {
+        console.warn('⚠️ 未知的文章API响应格式:', {
+          responseType: typeof response,
+          hasCode: response?.code !== undefined,
+          code: response?.code,
+          hasData: !!response?.data,
+          dataType: typeof response?.data,
+          fullResponse: response
+        })
+        return response
+      }
     }).catch(error => {
       console.error('❌ getAllArticles API调用失败:', {
         url,
@@ -249,7 +261,6 @@ export const articleAPI = {
       return '# 文章内容加载失败\n\n' + error.message
     }
   },
-
   // 简单搜索文章
   simpleSearch: (keyword, pageNum = 1, pageSize = 10) => {
     if (!keyword || !keyword.trim()) {
@@ -262,16 +273,201 @@ export const articleAPI = {
       pageNum: pageNum,
       pageSize: pageSize
     }
-    return api.get(url, { params })
+    
+    console.log('🔍 调用搜索API:', { keyword, url, params })
+    
+    return api.get(url, { params }).then(response => {
+      console.log('📥 搜索API原始响应:', response)
+      
+      // 处理标准的后端响应格式 {code: 200, message: string, detail: string, data: {...}}
+      if (response && response.code >= 200 && response.code < 300 && response.data) {
+        console.log('✅ 搜索API检测到标准响应格式，code:', response.code)
+        return response.data
+      }
+      // 处理axios已解包的响应格式
+      else if (response && response.data && response.data.code >= 200 && response.data.code < 300 && response.data.data) {
+        console.log('✅ 搜索API检测到axios解包格式，code:', response.data.code)
+        return response.data.data
+      }
+      // 处理直接返回数据的情况（向后兼容）
+      else if (response && response.data && (response.data.list || Array.isArray(response.data))) {
+        console.log('✅ 搜索API检测到直接数据格式')
+        return response.data
+      }
+      else {
+        console.warn('⚠️ 未知的搜索API响应格式:', response)
+        return response
+      }    }).catch(error => {
+      console.error('❌ 搜索API调用失败:', error)
+      throw error
+    })
   },
 
+  // 复杂搜索文章 - 支持多条件搜索
+  complexSearch: (searchOptions, pageNum = 1, pageSize = 10) => {
+    const userId = localStorage.getItem('userId')
+    if (!userId) {
+      return Promise.reject(new Error('用户ID不存在，请先登录'))
+    }
+
+    // 构建查询参数，根据API文档的参数列表
+    const params = {}
+    
+    // 添加各种搜索条件（如果有值的话）
+    if (searchOptions.keyword && searchOptions.keyword.trim()) {
+      params.keyword = searchOptions.keyword.trim()
+    }
+    
+    if (searchOptions.isShared !== undefined && searchOptions.isShared !== null && searchOptions.isShared !== '') {
+      params.isShared = searchOptions.isShared
+    }
+    
+    if (searchOptions.status) {
+      params.status = searchOptions.status
+    }
+    
+    if (searchOptions.categoryId) {
+      params.categoryId = searchOptions.categoryId
+    }
+    
+    if (searchOptions.startDate) {
+      params.startDate = searchOptions.startDate
+    }
+    
+    if (searchOptions.endDate) {
+      params.endDate = searchOptions.endDate
+    }
+
+    const url = `/articles/complex-search/${pageNum}/${pageSize}`
+    
+    console.log('🔍 调用复杂搜索API:', {
+      url,
+      params,
+      userId,
+      searchConditions: Object.keys(params).length
+    })
+
+    // 使用GET方法，参数通过query string传递
+    return api.get(url, { 
+      params,
+      headers: {
+        'X-User-Id': userId
+      }
+    }).then(response => {
+      console.log('📥 复杂搜索API原始响应:', response)
+      
+      let responseData = null
+      
+      // 处理标准的后端响应格式: {code: 200, message: "OK", detail: "获取用户文章列表成功", data: {...}}
+      if (response && response.code >= 200 && response.code < 300 && response.data) {
+        console.log('✅ 复杂搜索API检测到标准响应格式，code:', response.code)
+        responseData = response.data
+      }
+      // 处理axios已解包的响应格式
+      else if (response && response.data && response.data.code >= 200 && response.data.code < 300 && response.data.data) {
+        console.log('✅ 复杂搜索API检测到axios解包格式，code:', response.data.code)
+        responseData = response.data.data
+      }
+      // 处理直接返回数据的情况
+      else if (response && response.data) {
+        console.log('✅ 复杂搜索API检测到直接数据格式')
+        responseData = response.data
+      }
+      else {
+        console.warn('⚠️ 未知的复杂搜索API响应格式:', response)
+        responseData = response
+      }
+      
+      // 根据您提供的响应结构进行详细解析
+      if (responseData) {
+        console.log('📊 解析复杂搜索响应数据:', {
+          total: responseData.total,
+          listLength: responseData.list ? responseData.list.length : 0,
+          pageNum: responseData.pageNum,
+          pageSize: responseData.pageSize,
+          isFirstPage: responseData.isFirstPage,
+          isLastPage: responseData.isLastPage,
+          hasNextPage: responseData.hasNextPage,
+          hasPreviousPage: responseData.hasPreviousPage
+        })
+        
+        // 返回标准化的数据格式，保持与其他API一致
+        return {
+          list: responseData.list || [],
+          total: responseData.total || 0,
+          pageNum: responseData.pageNum || pageNum,
+          pageSize: responseData.pageSize || pageSize,
+          pages: responseData.pages || 0,
+          // 分页状态信息
+          isFirstPage: responseData.isFirstPage || false,
+          isLastPage: responseData.isLastPage || false,
+          hasNextPage: responseData.hasNextPage || false,
+          hasPreviousPage: responseData.hasPreviousPage || false,
+          // 导航信息
+          navigateFirstPage: responseData.navigateFirstPage || 0,
+          navigateLastPage: responseData.navigateLastPage || 0,
+          navigatePages: responseData.navigatePages || 0,
+          navigatepageNums: responseData.navigatepageNums || [],
+          // 其他分页字段
+          nextPage: responseData.nextPage || 0,
+          prePage: responseData.prePage || 0,
+          startRow: responseData.startRow || 0,
+          endRow: responseData.endRow || 0,
+          size: responseData.size || 0
+        }
+      }
+      
+      return {
+        list: [],
+        total: 0,
+        pageNum: pageNum,
+        pageSize: pageSize,
+        pages: 0
+      }
+    }).catch(error => {
+      console.error('❌ 复杂搜索API调用失败:', error)
+      
+      // 提供更详细的错误信息
+      if (error.response?.status === 400) {
+        console.error('❌ 搜索参数错误:', params)
+      } else if (error.response?.status === 401) {
+        console.error('❌ 认证失败，请重新登录')
+      } else if (error.response?.status === 404) {
+        console.error('❌ 搜索API端点不存在')
+      }
+      
+      throw error
+    })
+  },
   // 获取单篇文章详情
   getArticle: async (articleId) => {
     try {
       console.log('🔍 获取文章详情，ID:', articleId)
       
       const response = await api.get(`/articles/${articleId}`)
-      const articleData = response.data
+      
+      console.log('📄 文章API原始响应:', response)
+      
+      // 处理标准的后端响应格式 {code: 200, message: string, detail: string, data: {...}}
+      let articleData
+      if (response && response.code >= 200 && response.code < 300 && response.data) {
+        console.log('✅ 文章API检测到标准响应格式，code:', response.code)
+        articleData = response.data
+      }
+      // 处理axios已解包的响应格式
+      else if (response && response.data && response.data.code >= 200 && response.data.code < 300 && response.data.data) {
+        console.log('✅ 文章API检测到axios解包格式，code:', response.data.code)
+        articleData = response.data.data
+      }
+      // 处理直接返回数据的情况（向后兼容）
+      else if (response && response.data) {
+        console.log('✅ 文章API检测到直接数据格式')
+        articleData = response.data
+      }
+      else {
+        console.warn('⚠️ 未知的文章API响应格式:', response)
+        articleData = response.data || response
+      }
       
       console.log('📄 文章基本信息:', articleData)
       
@@ -297,7 +493,6 @@ export const articleAPI = {
       throw error
     }
   },
-
   // 创建新文章
   createArticle: (articleData) => {
     // 构建请求数据，支持多种字段名格式
@@ -314,9 +509,35 @@ export const articleAPI = {
       requestData.status = articleData.status
     }
 
-    return api.post('/articles', requestData)
-  },
-  // 更新文章
+    console.log('📝 创建文章请求:', requestData)
+    
+    return api.post('/articles', requestData).then(response => {
+      console.log('📝 创建文章API原始响应:', response)
+      
+      // 处理标准的后端响应格式 {code: 200, message: string, detail: string, data: {...}}
+      if (response && response.code >= 200 && response.code < 300 && response.data) {
+        console.log('✅ 创建文章API检测到标准响应格式，code:', response.code)
+        return { data: response.data }
+      }
+      // 处理axios已解包的响应格式
+      else if (response && response.data && response.data.code >= 200 && response.data.code < 300 && response.data.data) {
+        console.log('✅ 创建文章API检测到axios解包格式，code:', response.data.code)
+        return { data: response.data.data }
+      }
+      // 处理直接返回数据的情况（向后兼容）
+      else if (response && response.data) {
+        console.log('✅ 创建文章API检测到直接数据格式')
+        return response
+      }
+      else {
+        console.warn('⚠️ 未知的创建文章API响应格式:', response)
+        return response
+      }
+    }).catch(error => {
+      console.error('❌ 创建文章API调用失败:', error)
+      throw error
+    })
+  },  // 更新文章
   updateArticle: (id, articleData) => {
     // 确保有文章ID
     if (!id) {
@@ -337,7 +558,34 @@ export const articleAPI = {
       requestData.status = articleData.status
     }
 
-    return api.put(`/articles/${id}`, requestData)
+    console.log('📝 更新文章请求:', { id, requestData })
+    
+    return api.put(`/articles/${id}`, requestData).then(response => {
+      console.log('📝 更新文章API原始响应:', response)
+      
+      // 处理标准的后端响应格式 {code: 200, message: string, detail: string, data: {...}}
+      if (response && response.code >= 200 && response.code < 300 && response.data) {
+        console.log('✅ 更新文章API检测到标准响应格式，code:', response.code)
+        return { data: response.data }
+      }
+      // 处理axios已解包的响应格式
+      else if (response && response.data && response.data.code >= 200 && response.data.code < 300 && response.data.data) {
+        console.log('✅ 更新文章API检测到axios解包格式，code:', response.data.code)
+        return { data: response.data.data }
+      }
+      // 处理直接返回数据的情况（向后兼容）
+      else if (response && response.data) {
+        console.log('✅ 更新文章API检测到直接数据格式')
+        return response
+      }
+      else {
+        console.warn('⚠️ 未知的更新文章API响应格式:', response)
+        return response
+      }
+    }).catch(error => {
+      console.error('❌ 更新文章API调用失败:', error)
+      throw error
+    })
   },
 
   // 删除文章
@@ -405,10 +653,73 @@ export const articleAPI = {
 export const categoryAPI = {
   // 获取分类树
   getCategoryTree: (categoryId = 0) => {
-    // API直接返回分类数组（树状结构），不是包装格式
+    console.log('🌳 调用分类树API，categoryId:', categoryId)
+    // 根据后端规范，先尝试带参数的API
     return api.get(`/categories/tree/${categoryId}`).then(response => {
-      // 直接返回数组数据，因为后端没有包装
-      return response.data || response
+      console.log('🌳 分类树API原始响应:', response)
+      
+      // 处理标准的后端响应格式 {code: 200, message: string, detail: string, data: [...]}
+      if (response && response.code >= 200 && response.code < 300 && response.data && Array.isArray(response.data)) {
+        console.log('✅ 检测到标准响应格式，code:', response.code, '分类数量:', response.data.length)
+        return response.data
+      }
+      // 处理axios已解包的响应格式
+      else if (response && response.data && response.data.code >= 200 && response.data.code < 300 && Array.isArray(response.data.data)) {
+        console.log('✅ 检测到axios解包的标准响应格式，code:', response.data.code, '分类数量:', response.data.data.length)
+        return response.data.data
+      }
+      // 处理直接返回数组的情况（向后兼容）
+      else if (Array.isArray(response)) {
+        console.log('✅ 检测到直接数组格式，分类数量:', response.length)
+        return response
+      }
+      else if (response && response.data && Array.isArray(response.data)) {
+        console.log('✅ 检测到data字段数组格式，分类数量:', response.data.length)
+        return response.data
+      }
+      else {
+        console.warn('⚠️ 未知的分类树响应格式:', {
+          responseType: typeof response,
+          hasCode: response?.code !== undefined,
+          code: response?.code,
+          hasData: !!response?.data,
+          dataType: typeof response?.data,
+          isDataArray: Array.isArray(response?.data),
+          fullResponse: response
+        })
+        return []
+      }
+    }).catch(error => {
+      console.error('❌ 分类树API调用失败，尝试备用路径:', error)
+      // 如果带参数的API失败，尝试不带参数的API
+      return api.get('/categories/tree/').then(response => {
+        console.log('🌳 备用分类树API响应:', response)
+        
+        // 同样处理备用API的响应格式
+        if (response && response.code >= 200 && response.code < 300 && response.data && Array.isArray(response.data)) {
+          console.log('✅ 备用API标准响应格式，code:', response.code, '分类数量:', response.data.length)
+          return response.data
+        }
+        else if (response && response.data && response.data.code >= 200 && response.data.code < 300 && Array.isArray(response.data.data)) {
+          console.log('✅ 备用API axios解包格式，code:', response.data.code, '分类数量:', response.data.data.length)
+          return response.data.data
+        }
+        else if (Array.isArray(response)) {
+          console.log('✅ 备用API直接数组格式，分类数量:', response.length)
+          return response
+        }
+        else if (response && response.data && Array.isArray(response.data)) {
+          console.log('✅ 备用API data字段格式，分类数量:', response.data.length)
+          return response.data
+        }
+        else {
+          console.warn('⚠️ 备用API也返回未知格式:', response)
+          return []
+        }
+      }).catch(backupError => {
+        console.error('❌ 备用分类树API也失败:', backupError)
+        throw backupError
+      })
     })
   },
   
@@ -446,7 +757,7 @@ export const categoryAPI = {
   createCategory: (categoryData) => {
     return api.post('/categories', {
       name: categoryData.name,
-      parentId: categoryData.parentId || null  // 根节点使用null
+      parentId: categoryData.parentId  // 根节点使用null
     })
   },
   

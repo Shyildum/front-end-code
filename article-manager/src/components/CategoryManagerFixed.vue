@@ -232,11 +232,11 @@ const handleSubmitCategory = async () => {
     } else {
       response = await categoryAPI.createCategory(categoryData)
     }
-    
-    console.log(`${isEdit ? '更新' : '创建'}分类响应:`, response)
+      console.log(`${isEdit ? '更新' : '创建'}分类响应:`, response)
 
-    // 检查响应格式
-    if (response && response.code === 0) {
+    // 检查响应格式 - 创建分类返回201，更新分类返回200
+    const expectedCode = isEdit ? 200 : 201
+    if (response && response.code === expectedCode) {
       successMessage.value = response.detail || response.message || `分类${isEdit ? '更新' : '创建'}成功`
       
       // 重置表单和状态

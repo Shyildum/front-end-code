@@ -1,5 +1,6 @@
 <template>
-  <div class="article-manager">    <!-- 显示编辑器 -->
+  <div class="article-manager">
+    <!-- 显示编辑器 -->
     <ArticleEditor 
       v-if="showEditor"
       :article-id="editingArticleId"
@@ -12,284 +13,516 @@
     <div v-else class="manager-layout">
       <!-- 顶部导航栏 -->
       <header class="navbar">
-      <div class="navbar-brand">
-        <Logo class="logo" />
-        <h1 class="brand-name">ArtMan</h1>
-      </div>
-      
-      <div class="navbar-user">
-        <div class="user-avatar" @click="showUserMenu = !showUserMenu">
-          <img :src="userAvatar" :alt="userName" />
-          <div class="user-status"></div>
+        <div class="navbar-brand">
+          <Logo class="logo" />
+          <h1 class="brand-name">ArtMan</h1>
         </div>
         
-        <!-- 用户菜单下拉框 -->
-        <div v-if="showUserMenu" class="user-menu" @click.stop>
-          <div class="user-info">
+        <div class="navbar-user">
+          <div class="user-avatar" @click="toggleUserMenu">
             <img :src="userAvatar" :alt="userName" />
-            <div class="user-details">
-              <div class="user-name">{{ userName }}</div>
-              <div class="user-email">{{ userEmail }}</div>
-            </div>
+            <div class="user-status"></div>
           </div>
-          <hr class="menu-divider">
-          <ul class="menu-items">
-            <li @click="editProfile">
-              <i class="icon-edit"></i>
-              <span>编辑个人资料</span>
-            </li>
-            <li @click="openSettings">
-              <i class="icon-settings"></i>
-              <span>设置</span>
-            </li>
-            <li @click="logout" class="logout-item">
-              <i class="icon-logout"></i>
-              <span>退出登录</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </header>
-
-    <!-- 主体内容区域 -->
-    <main class="main-content">      <!-- 左侧文章目录 -->
-      <aside class="sidebar">
-        <!-- 加载状态覆盖层 -->
-        <div v-if="pagination.loading" class="loading-overlay">
-          <div class="loading-spinner"></div>
-        </div>
-          <div class="sidebar-header">
-          <h3>文章目录</h3>
-          <div class="header-actions">
-            <button class="btn-new-article" @click="createNewArticle">
-              <i class="icon-plus"></i>
-              新建文章
-            </button>
-            <router-link to="/categories" class="btn-manage-categories" title="分类管理">
-              <i class="icon-folder"></i>
-              分类管理
-            </router-link>
-          </div>
-        </div>
-          <div class="search-box">
-          <i class="icon-search"></i>
-          <input 
-            v-model="searchQuery" 
-            type="text" 
-            placeholder="搜索文章..."
-            @input="searchArticles"
-            @keyup.enter="searchArticles"
-          />
-        </div>        <!-- 筛选控件 -->
-        <div class="filter-controls">
-          <select 
-            v-model="searchState.filters.categoryId" 
-            @change="filterByCategory(searchState.filters.categoryId)"
-            class="filter-select"
-          >
-            <option value="">所有分类</option>
-            <option v-for="category in flatCategories" :key="category.categoryId" :value="category.categoryId">
-              {{ category.displayName }}
-            </option>
-          </select>
           
-          <button 
-            v-if="searchState.query || searchState.filters.categoryId" 
-            @click="clearFilters"
-            class="clear-filters-btn"
-            title="清除筛选"
-          >
-            <i class="icon-close"></i>
-          </button>
-        </div>
-
-        <!-- 文章分类和目录树 -->
-        <div class="article-tree">
-          <div class="tree-section">
-            <div class="section-header" @click="toggleSection('recent')">
-              <i :class="['icon-chevron', sectionExpanded.recent ? 'expanded' : '']"></i>
-              <span>最近文章</span>
-              <span class="count">({{ recentArticles.length }})</span>
-            </div>            <ul v-show="sectionExpanded.recent" class="tree-list">
-              <li 
-                v-for="article in recentArticles" 
-                :key="article.id"
-                :class="['tree-item', { active: selectedArticle?.id === article.id }]"
-              >
-                <div class="tree-item-content" @click="selectArticle(article)">
-                  <i class="icon-document"></i>
-                  <span class="article-title">{{ article.title }}</span>
-                  <span class="article-date">{{ formatDate(article.updatedAt) }}</span>
-                </div>
-                <div class="tree-item-actions">
-                  <button class="tree-action-btn" @click.stop="editArticle(article)" title="编辑">
-                    <i class="icon-edit"></i>
-                  </button>
-                  <button class="tree-action-btn delete" @click.stop="deleteArticle(article)" title="删除">
-                    <i class="icon-delete"></i>
-                  </button>
-                </div>
+          <!-- 用户菜单下拉框 -->
+          <div v-if="showUserMenu" class="user-menu" @click.stop>
+            <div class="user-info">
+              <img :src="userAvatar" :alt="userName" />
+              <div class="user-details">
+                <div class="user-name">{{ userName }}</div>
+                <div class="user-email">{{ userEmail }}</div>
+              </div>
+            </div>
+            <hr class="menu-divider">
+            <ul class="menu-items">
+              <li @click="editProfile">
+                <i class="icon-edit"></i>
+                <span>编辑个人资料</span>
+              </li>
+              <li @click="openSettings">
+                <i class="icon-settings"></i>
+                <span>设置</span>
+              </li>
+              <li @click="logout" class="logout-item">
+                <i class="icon-logout"></i>
+                <span>退出登录</span>
               </li>
             </ul>
-          </div>          <div class="tree-section">
-            <div class="section-header" @click="toggleSection('categories')">
-              <i :class="['icon-chevron', sectionExpanded.categories ? 'expanded' : '']"></i>
-              <span>分类</span>
-              <span class="count">({{ flatCategoriesCount }})</span>
-            </div>
-            <div v-show="sectionExpanded.categories" class="tree-list">
-              <!-- 递归分类树组件 -->              <CategoryTreeNode 
-                v-for="category in categories" 
-                :key="category.categoryId"
-                :category="category"
-                :all-articles="allArticles"
-                :selected-article="selectedArticle"
-                @select-article="selectArticle"
-                @toggle-category="toggleCategory"
-                @edit-article="editArticle"
-                @delete-article="deleteArticle"
-              />
+          </div>
+        </div>
+      </header>
+
+      <!-- 主体内容区域 -->
+      <main class="main-content">
+
+        <!-- 左侧文章目录 -->
+        <aside class="sidebar">
+          <!-- 加载状态覆盖层 -->
+          <div v-if="pagination.loading" class="loading-overlay">
+            <div class="loading-spinner"></div>
+          </div>
+          <div class="sidebar-header">
+            <h3>文章目录</h3>
+            <div class="header-actions">
+              <button class="btn-new-article" @click="createNewArticle">
+                <i class="icon-plus"></i>
+                新建文章
+              </button>
+              <router-link to="/categories" class="btn-manage-categories" title="分类管理">
+                <i class="icon-folder"></i>
+                分类管理
+              </router-link>
             </div>
           </div>
+          <div class="search-box">
+            <i class="icon-search"></i>
+            <input 
+              v-model="searchQuery" 
+              type="text" 
+              placeholder="搜索文章... (按空格键或回车搜索)"
+              @keyup.space="searchArticles"
+              @keyup.enter="searchArticles"
+            />
+            <button 
+              v-if="searchQuery.trim()" 
+              class="search-clear-btn" 
+              @click="clearFilters"
+              title="清除搜索"
+            >
+              ×
+            </button>
+          </div>
 
-          <div class="tree-section">
-            <div class="section-header" @click="toggleSection('all')">
-              <i :class="['icon-chevron', sectionExpanded.all ? 'expanded' : '']"></i>
-              <span>所有文章</span>
-              <span class="count">({{ allArticles.length }})</span>
-            </div>            <ul v-show="sectionExpanded.all" class="tree-list">
-              <li 
-                v-for="article in filteredArticles" 
-                :key="article.id"
-                :class="['tree-item', { active: selectedArticle?.id === article.id }]"
+          <!-- 搜索选项 -->
+          <div class="search-options">
+            <label class="search-type-label">搜索范围:</label>
+            <div class="search-type-options">
+              <label class="search-type-option">
+                <input 
+                  type="radio" 
+                  v-model="searchState.type" 
+                  value="simple"
+                  @change="onSearchTypeChange"
+                />
+                <span>仅标题</span>
+              </label>
+              <label class="search-type-option">
+                <input 
+                  type="radio" 
+                  v-model="searchState.type" 
+                  value="complex"
+                  @change="onSearchTypeChange"
+                />
+                <span>标题+内容</span>
+              </label>
+            </div>
+          </div>
+          
+          <!-- 筛选控件 -->
+          <div class="filter-controls">
+            <select 
+              v-model="searchState.filters.categoryId" 
+              @change="filterByCategory(searchState.filters.categoryId)"
+              class="filter-select"
+            >
+              <option value="">所有分类</option>
+              <option v-for="category in flatCategories" :key="category.categoryId" :value="category.categoryId">
+                {{ category.displayName }}
+              </option>
+            </select>
+            
+            <button 
+              v-if="searchState.query || searchState.filters.categoryId" 
+              @click="clearFilters"
+              class="clear-filters-btn"
+              title="清除筛选"
+            >
+              <i class="icon-close"></i>
+            </button>
+          </div>
+
+          <!-- 文章分类和目录树 -->
+          <div class="article-tree">
+            <div class="tree-section">
+              <div class="section-header" @click="toggleSection('recent')">
+                <i :class="['icon-chevron', sectionExpanded.recent ? 'expanded' : '']"></i>
+                <span>最近文章</span>
+                <span class="count">({{ recentArticles.length }})</span>
+              </div>
+              <ul v-show="sectionExpanded.recent" class="tree-list">
+                <li 
+                  v-for="article in recentArticles" 
+                  :key="article.id"
+                  :class="['tree-item', { active: selectedArticle?.id === article.id }]"
+                >
+                  <div class="tree-item-content" @click="selectArticle(article)">
+                    <i class="icon-document"></i>
+                    <span class="article-title">{{ article.title }}</span>
+                    <span class="article-date">{{ formatDate(article.updatedAt) }}</span>
+                  </div>
+                  <div class="tree-item-actions">
+                    <button class="tree-action-btn" @click.stop="editArticle(article)" title="编辑">
+                      <i class="icon-edit"></i>
+                    </button>
+                    <button class="tree-action-btn delete" @click.stop="deleteArticle(article)" title="删除">
+                      <i class="icon-delete"></i>
+                    </button>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div class="tree-section">
+              <div class="section-header" @click="toggleSection('categories')">
+                <i :class="['icon-chevron', sectionExpanded.categories ? 'expanded' : '']"></i>
+                <span>分类</span>
+                <span class="count">({{ flatCategoriesCount }})</span>
+              </div>
+              <div v-show="sectionExpanded.categories" class="tree-list">
+                <!-- 调试信息 -->
+                <div v-if="categories.length === 0" class="debug-info" style="padding: 1rem; color: #dc2626; background: #fef2f2; border-radius: 6px; margin: 0.5rem 0; font-size: 14px;">
+                  <p><strong>🔍 分类树调试信息:</strong></p>
+                  <p>• 分类数组长度: {{ categories.length }}</p>
+                  <p>• 是否为数组: {{ Array.isArray(categories) }}</p>
+                  <p>• 用户ID: {{ currentUserId }}</p>
+                  <p>• 分类展开状态: {{ sectionExpanded.categories }}</p>
+                  <button @click="loadCategories" style="margin-top: 0.5rem; padding: 0.25rem 0.5rem; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    重新加载分类
+                  </button>
+                </div>
+                <!-- 递归分类树组件 -->
+                <CategoryTreeNode 
+                  v-for="category in categories" 
+                  :key="category.categoryId"
+                  :category="category"
+                  :all-articles="allArticles"
+                  :selected-article="selectedArticle"
+                  @select-article="selectArticle"
+                  @toggle-category="toggleCategory"
+                  @edit-article="editArticle"
+                  @delete-article="deleteArticle"
+                />
+              </div>
+            </div>
+            <div class="tree-section">
+              <div class="section-header" @click="toggleSection('all')">
+                <i :class="['icon-chevron', sectionExpanded.all ? 'expanded' : '']"></i>
+                <span>所有文章</span>
+                <span class="count">({{ allArticles.length }})</span>
+              </div>
+              <ul v-show="sectionExpanded.all" class="tree-list">
+                <li 
+                  v-for="article in filteredArticles" 
+                  :key="article.id"
+                  :class="['tree-item', { active: selectedArticle?.id === article.id }]"
+                >
+                  <div class="tree-item-content" @click="selectArticle(article)">
+                    <i class="icon-document"></i>
+                    <span class="article-title">{{ article.title }}</span>
+                    <span class="article-date">{{ formatDate(article.updatedAt) }}</span>
+                  </div>
+                  <div class="tree-item-actions">
+                    <button class="tree-action-btn" @click.stop="editArticle(article)" title="编辑">
+                      <i class="icon-edit"></i>
+                    </button>
+                    <button class="tree-action-btn delete" @click.stop="deleteArticle(article)" title="删除">
+                      <i class="icon-delete"></i>
+                    </button>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+          
+          <!-- 分页控件 -->
+          <div v-if="pagination.total > pagination.pageSize" class="pagination-container">
+            <div class="pagination-info">
+              <span>共 {{ pagination.total }} 篇文章</span>
+            </div>
+            <div class="pagination-controls">
+              <button 
+                :disabled="pagination.current <= 1" 
+                @click="handlePageChange(pagination.current - 1)"
+                class="pagination-btn"
               >
-                <div class="tree-item-content" @click="selectArticle(article)">
-                  <i class="icon-document"></i>
-                  <span class="article-title">{{ article.title }}</span>
-                  <span class="article-date">{{ formatDate(article.updatedAt) }}</span>
-                </div>
-                <div class="tree-item-actions">
-                  <button class="tree-action-btn" @click.stop="editArticle(article)" title="编辑">
-                    <i class="icon-edit"></i>
-                  </button>
-                  <button class="tree-action-btn delete" @click.stop="deleteArticle(article)" title="删除">
-                    <i class="icon-delete"></i>
-                  </button>
-                </div>
-              </li>
-            </ul></div>
-        </div>
+                ‹ 上一页
+              </button>
+              <span class="pagination-current">
+                {{ pagination.current }} / {{ Math.ceil(pagination.total / pagination.pageSize) }}
+              </span>
+              <button 
+                :disabled="pagination.current >= Math.ceil(pagination.total / pagination.pageSize)" 
+                @click="handlePageChange(pagination.current + 1)"
+                class="pagination-btn"
+              >
+                下一页 ›
+              </button>
+            </div>
+          </div>
+        </aside>
         
-        <!-- 分页控件 -->
-        <div v-if="pagination.total > pagination.pageSize" class="pagination-container">
-          <div class="pagination-info">
-            <span>共 {{ pagination.total }} 篇文章</span>
-          </div>
-          <div class="pagination-controls">
-            <button 
-              :disabled="pagination.current <= 1" 
-              @click="handlePageChange(pagination.current - 1)"
-              class="pagination-btn"
-            >
-              ‹ 上一页
-            </button>
-            <span class="pagination-current">
-              {{ pagination.current }} / {{ Math.ceil(pagination.total / pagination.pageSize) }}
-            </span>
-            <button 
-              :disabled="pagination.current >= Math.ceil(pagination.total / pagination.pageSize)" 
-              @click="handlePageChange(pagination.current + 1)"
-              class="pagination-btn"
-            >
-              下一页 ›
-            </button>
-          </div>
-        </div>
-      </aside>
+        <!-- 右侧文章展示区域 -->
+        <section class="article-display">
 
-      <!-- 右侧文章展示区域 -->
-      <section class="article-display">
-        <!-- 加载状态 -->
-        <div v-if="isLoading && allArticles.length === 0" class="loading-state">
-          <div class="loading-spinner-large"></div>
-          <h3>正在加载文章...</h3>
-          <p>请稍候，正在从数据库获取您的文章</p>
-        </div>
-        
-        <!-- 错误状态 -->
-        <div v-else-if="!isLoading && allArticles.length === 0" class="error-state">
-          <div class="error-icon">
-            <i class="icon-error"></i>
-          </div>
-          <h3>暂无文章</h3>
-          <p>您还没有创建任何文章，或者服务器连接出现问题</p>
-          <button class="btn-primary" @click="loadArticles(1)">
-            <i class="icon-refresh"></i>
-            重新加载
-          </button>
-          <button class="btn-secondary" @click="createNewArticle">
-            <i class="icon-plus"></i>
-            创建第一篇文章
-          </button>
-        </div>
-        
-        <!-- 空选择状态 -->
-        <div v-else-if="!selectedArticle" class="empty-state">
-          <div class="empty-icon">
-            <i class="icon-document-empty"></i>
-          </div>
-          <h3>选择一篇文章开始阅读</h3>
-          <p>从左侧目录中选择文章，或者创建一篇新的文章</p>
-          <button class="btn-primary" @click="createNewArticle">
-            <i class="icon-plus"></i>
-            创建新文章
-          </button>
-        </div>
-
-        <!-- 文章内容显示 -->
-        <div v-else class="article-content">
-          <!-- 文章头部信息 -->
-          <header class="article-header">
-            <div class="article-meta">
-              <h1 class="article-title">{{ selectedArticle.title }}</h1>
-              <div class="article-info">
-                <span class="info-item">
-                  <i class="icon-calendar"></i>
-                  创建于 {{ formatDate(selectedArticle.createdAt) }}
-                </span>
-                <span class="info-item">
-                  <i class="icon-clock"></i>
-                  更新于 {{ formatDate(selectedArticle.updatedAt) }}
-                </span>
-                <span class="info-item">
-                  <i class="icon-tag"></i>
-                  {{ selectedArticle.category || '未分类' }}
-                </span>
-                <span class="info-item" :class="'status-' + selectedArticle.status">
-                  <i class="icon-status"></i>
-                  {{ getStatusText(selectedArticle.status) }}
-                </span>
+          <!-- 高级搜索区域 -->
+          <div class="advanced-search-section">
+            <div class="search-header">
+              <h4>高级搜索</h4>
+              <button 
+                class="search-toggle-btn" 
+                @click="toggleAdvancedSearch"
+                :class="{ 'active': showAdvancedSearch }"
+              >
+                <i :class="['icon-chevron', { 'expanded': showAdvancedSearch }]"></i>
+                {{ showAdvancedSearch ? '收起' : '展开' }}
+              </button>
+            </div>
+            
+            <!-- 基础搜索框 -->
+            <div class="basic-search">
+              <div class="search-input-group">
+                <i class="icon-search"></i>
+                <input 
+                  v-model="advancedSearch.keyword" 
+                  type="text" 
+                  placeholder="输入关键词搜索文章..."
+                  @keyup.enter="executeAdvancedSearch"
+                  class="search-input"
+                />
+                <button 
+                  v-if="advancedSearch.keyword" 
+                  class="search-clear-btn" 
+                  @click="clearAdvancedSearch"
+                  title="清除搜索"
+                >
+                  ×
+                </button>
               </div>
             </div>
             
-            <div class="article-actions">
-              <button class="btn-action" @click="editArticle(selectedArticle)" title="编辑">
-                <i class="icon-edit"></i>
-              </button>
-              <button class="btn-action" @click="shareArticle(selectedArticle)" title="分享">
-                <i class="icon-share"></i>
-              </button>
-              <button class="btn-action" @click="deleteArticle(selectedArticle)" title="删除">
-                <i class="icon-delete"></i>
+            <!-- 高级筛选条件 -->
+            <div v-show="showAdvancedSearch" class="advanced-filters">
+              <div class="filter-row">
+                <div class="filter-item">
+                  <label>是否共享:</label>
+                  <select v-model="advancedSearch.isShared">
+                    <option value="">全部</option>
+                    <option :value="true">共享</option>
+                    <option :value="false">未共享</option>
+                  </select>
+                </div>
+                
+                <div class="filter-item">
+                  <label>文章状态:</label>
+                  <select v-model="advancedSearch.status">
+                    <option value="">全部状态</option>
+                    <option value="draft">草稿</option>
+                    <option value="published">已发布</option>
+                  </select>
+                </div>
+                
+                <div class="filter-item">
+                  <label>分类:</label>
+                  <select v-model="advancedSearch.categoryId">
+                    <option value="">所有分类</option>
+                    <option v-for="category in flatCategories" :key="category.categoryId" :value="category.categoryId">
+                      {{ category.displayName }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="filter-row">
+                <div class="filter-item">
+                  <label>开始日期:</label>
+                  <input 
+                    v-model="advancedSearch.startDate" 
+                    type="date" 
+                    class="date-input"
+                  />
+                </div>
+                
+                <div class="filter-item">
+                  <label>结束日期:</label>
+                  <input 
+                    v-model="advancedSearch.endDate" 
+                    type="date" 
+                    class="date-input"
+                  />
+                </div>
+                
+                <div class="filter-item filter-actions">
+                  <button 
+                    @click="executeAdvancedSearch" 
+                    class="btn-search"
+                    :disabled="isLoading"
+                  >
+                    <i class="icon-search"></i>
+                    搜索
+                  </button>
+                  <button 
+                    @click="resetAdvancedSearch" 
+                    class="btn-reset"
+                  >
+                    <i class="icon-refresh"></i>
+                    重置
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 搜索结果提示 -->
+            <div v-if="searchResultInfo.show" class="search-result-info">
+              <span class="result-text">
+                <i class="icon-search"></i>
+                {{ searchResultInfo.text }}
+              </span>
+              <button @click="clearAdvancedSearch" class="clear-search-btn">
+                清除搜索
               </button>
             </div>
-          </header>
+          </div>
 
-          <!-- 文章内容 -->
-          <div class="article-body">
-            <div class="content-preview" v-html="selectedArticle.content"></div>
-          </div>        </div>      </section>
-    </main>
+          <!-- 加载状态 -->
+          <div v-if="isLoading && allArticles.length === 0" class="loading-state">
+            <div class="loading-spinner-large"></div>
+            <h3>正在加载文章...</h3>
+            <p>请稍候，正在从数据库获取您的文章</p>
+          </div>
+          
+          <!-- 错误状态 -->
+          <div v-else-if="!isLoading && allArticles.length === 0" class="error-state">
+            <div class="error-icon">
+              <i class="icon-error"></i>
+            </div>
+            <h3>暂无文章</h3>
+            <p>您还没有创建任何文章，或者服务器连接出现问题</p>
+            <button class="btn-primary" @click="loadArticles(1)">
+              <i class="icon-refresh"></i>
+              重新加载
+            </button>
+            <button class="btn-secondary" @click="createNewArticle">
+              <i class="icon-plus"></i>
+              创建第一篇文章
+            </button>
+          </div>
+          
+          <!-- 空选择状态 -->
+          <div v-else-if="!selectedArticle" class="empty-state">
+            <div class="empty-icon">
+              <i class="icon-document-empty"></i>
+            </div>
+            <h3>选择一篇文章开始阅读</h3>
+            <p>从左侧目录中选择文章，或者创建一篇新的文章</p>
+            <button class="btn-primary" @click="createNewArticle">
+              <i class="icon-plus"></i>
+              创建新文章
+            </button>
+          </div>
+          
+          <!-- 文章内容显示 -->
+          <div v-else class="article-content">
+            <!-- 文章头部信息 -->
+            <header class="article-header">
+              <div class="article-meta">
+                <h1 class="article-title">{{ selectedArticle.title }}</h1>
+                <div class="article-info">
+                  <span class="info-item">
+                    <i class="icon-calendar"></i>
+                    创建于 {{ formatDate(selectedArticle.createdAt) }}
+                  </span>
+                  <span class="info-item">
+                    <i class="icon-clock"></i>
+                    更新于 {{ formatDate(selectedArticle.updatedAt) }}
+                  </span>
+                  <span class="info-item">
+                    <i class="icon-tag"></i>
+                    {{ selectedArticleCategoryName }}
+                  </span>
+                  <span class="info-item" :class="'status-' + selectedArticle.status">
+                    <i class="icon-status"></i>
+                    {{ getStatusText(selectedArticle.status) }}
+                  </span>
+                  <span class="info-item" v-if="selectedArticle.commentCount !== undefined">
+                    <i class="icon-comment"></i>
+                    {{ selectedArticle.commentCount || 0 }} 条评论
+                  </span>
+                </div>
+              </div>
+              <div class="article-actions">
+                <button class="btn-action" @click="getAI(selectedArticle)" title="AI摘要" :disabled="aiLoading">
+                  <i class="icon-ai" v-if="!aiLoading">🤖</i>
+                  <i class="icon-loading" v-else>⏳</i>
+                </button>
+                <button class="btn-action" @click="editArticle(selectedArticle)" title="编辑">
+                  <i class="icon-edit"></i>
+                </button>
+                <button class="btn-action" @click="shareArticle(selectedArticle)" title="分享">
+                  <i class="icon-share"></i>
+                </button>
+                <button class="btn-action" @click="deleteArticle(selectedArticle)" title="删除">
+                  <i class="icon-delete"></i>
+                </button>
+              </div>
+            </header>
+            
+            <!-- 文章内容 -->
+            <div class="article-body">
+              <MarkdownRenderer 
+                :content="selectedArticle.content"
+                class="content-preview"
+              />
+              
+              <!-- AI摘要展示区域 -->
+              <div v-if="showAISummary" class="ai-summary-section">
+                <div class="ai-summary-header">
+                  <div class="ai-summary-title">
+                    <i class="ai-icon">🤖</i>
+                    <span>AI智能摘要</span>
+                  </div>
+                  <button @click="closeAISummary" class="ai-close-btn" title="关闭摘要">
+                    <i>✕</i>
+                  </button>
+                </div>
+                <div class="ai-summary-content">
+                  {{ aiSummary }}
+                </div>
+                <div class="ai-summary-footer">
+                  <span class="ai-powered">Powered by DeepSeek AI</span>
+                </div>
+              </div>
+              
+              <!-- 评论区展开按钮 -->
+              <div class="comments-toggle-section">
+                <button 
+                  class="comments-toggle-btn"
+                  @click="toggleComments"
+                  :class="{ 'active': showComments }"
+                >
+                  <i class="icon-comment"></i>
+                  <span v-if="!showComments">
+                    查看评论 ({{ selectedArticle.commentCount || 0 }})
+                  </span>
+                  <span v-else>
+                    收起评论
+                  </span>
+                  <i :class="['icon-chevron', { 'expanded': showComments }]"></i>
+                </button>
+              </div>
+            </div>
+            
+            <!-- 文章评论 -->
+            <div v-if="showComments" class="article-comments-section">
+              <ArticleComments
+                v-if="selectedArticle.id"
+                :article-id="selectedArticle.id"
+                :article-author-id="selectedArticle.userId || selectedArticle.authorId"
+                :allow-comment="selectedArticle.status === 'published'"
+                @comment-count-change="onCommentCountChange"
+              />
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
     
     <!-- 个人资料编辑器模态框 -->
@@ -299,7 +532,11 @@
           <h3>编辑个人信息</h3>
           <button @click="closeProfileEditor" class="close-btn">✕</button>
         </div>
-        <UserProfileEditor @updated="onProfileUpdated" />
+        <UserProfileEditor 
+          :userInfo="currentUserInfo"
+          @updated="onProfileUpdated" 
+          @close="closeProfileEditor"
+        />
       </div>
     </div>
   </div>
@@ -312,7 +549,10 @@ import Logo from '@/components/Logo.vue'
 import ArticleEditor from '@/components/ArticleEditor.vue'
 import UserProfileEditor from '@/components/UserProfileEditor.vue'
 import CategoryTreeNode from '@/components/CategoryTreeNode.vue'
+import ArticleComments from '@/components/ArticleComments.vue'
+import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { articleAPI, categoryAPI, authAPI } from '@/services/api'
+import { aiService } from '@/services/ai'
 
 const router = useRouter()
 
@@ -336,12 +576,44 @@ const pagination = reactive({
 // 搜索相关状态
 const searchState = reactive({
   query: '',
-  type: 'simple', // 'simple' | 'complex'
+  type: 'complex',
   filters: {
     categoryId: null,
     status: null,
     dateRange: null
   }
+})
+
+// 展开状态
+const sectionExpanded = reactive({
+  recent: true,
+  categories: true,
+  all: false
+})
+
+// 评论展开状态
+const showComments = ref(false)
+
+// AI摘要相关状态
+const aiLoading = ref(false)
+const aiSummary = ref('')
+const showAISummary = ref(false)
+
+// 高级搜索相关状态
+const showAdvancedSearch = ref(false)
+const advancedSearch = reactive({
+  keyword: '',
+  isShared: '',
+  status: '',
+  categoryId: '',
+  startDate: '',
+  endDate: ''
+})
+
+// 搜索结果信息
+const searchResultInfo = reactive({
+  show: false,
+  text: ''
 })
 
 // 编辑器相关状态
@@ -353,15 +625,52 @@ const originalArticleData = ref(null)
 const userName = ref('Demo User')
 const userEmail = ref('demo@artman.com')
 const userAvatar = ref('https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=64&h=64&fit=crop&crop=face')
-
-// 展开状态
-const sectionExpanded = reactive({
-  recent: true,
-  categories: true,
-  all: false
-})
+const currentUserInfo = ref(null) // 存储完整的用户信息对象
 
 // 计算属性
+// 安全获取用户ID的计算属性
+const currentUserId = computed(() => {
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem('userId') : null
+  } catch (error) {
+    console.warn('无法访问 localStorage:', error)
+    return null
+  }
+})
+
+const selectedArticleCategoryName = computed(() => {
+  if (!selectedArticle.value) return '未分类'
+  
+  // 如果已经有分类名称且不是数字，直接返回
+  if (selectedArticle.value.category && typeof selectedArticle.value.category === 'string') {
+    return selectedArticle.value.category
+  }
+  
+  // 如果有分类ID，尝试从本地分类树获取名称
+  const categoryId = selectedArticle.value.categoryId || selectedArticle.value.category_id || 0
+  if (categoryId && categoryId !== 0) {
+    const findCategoryInTree = (cats, targetId) => {
+      for (const cat of cats) {
+        if (cat.categoryId === targetId || cat.categoryId === String(targetId)) {
+          return cat.name
+        }
+        if (cat.children && cat.children.length > 0) {
+          const found = findCategoryInTree(cat.children, targetId)
+          if (found) return found
+        }
+      }
+      return null
+    }
+    
+    const localCategoryName = findCategoryInTree(categories.value, categoryId)
+    if (localCategoryName) {
+      return localCategoryName
+    }
+  }
+  
+  return '未分类'
+})
+
 const recentArticles = computed(() => {
   return allArticles.value
     .sort((a, b) => {
@@ -375,7 +684,7 @@ const recentArticles = computed(() => {
 
 const filteredArticles = computed(() => {
   let filtered = allArticles.value
-
+  
   // 文本搜索筛选
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
@@ -395,14 +704,14 @@ const filteredArticles = computed(() => {
       article.category_id === String(searchState.filters.categoryId)
     )
   }
-
+  
   // 状态筛选
   if (searchState.filters.status) {
     filtered = filtered.filter(article => 
       article.status === searchState.filters.status
     )
   }
-
+  
   return filtered
 })
 
@@ -421,60 +730,229 @@ const flatCategoriesCount = computed(() => {
   return countCategories(categories.value)
 })
 
-// 扁平化分类列表，用于筛选下拉框
-const flatCategories = computed(() => {
-  const flattenCategories = (cats, level = 0) => {
-    let result = []
-    cats.forEach(cat => {
-      const prefix = '　'.repeat(level)
-      result.push({
-        categoryId: cat.categoryId,
-        name: prefix + cat.name,
-        displayName: prefix + cat.name
-      })
-      if (cat.children && cat.children.length > 0) {
-        result.push(...flattenCategories(cat.children, level + 1))
-      }
-    })
-    return result
-  }
-  return flattenCategories(categories.value)
-})
-
 // 方法
 const toggleSection = (section) => {
   sectionExpanded[section] = !sectionExpanded[section]
 }
 
-const toggleCategory = (categoryId) => {
-  const findAndToggleCategory = (cats) => {
-    for (let cat of cats) {
-      if (cat.categoryId === categoryId) {
-        cat.expanded = !cat.expanded
-        return true
-      }
-      if (cat.children && cat.children.length > 0) {
-        if (findAndToggleCategory(cat.children)) {
-          return true
-        }
-      }
-    }
-    return false
+// 切换评论显示
+const toggleComments = () => {
+  showComments.value = !showComments.value
+}
+
+// 高级搜索相关方法
+const toggleAdvancedSearch = () => {
+  showAdvancedSearch.value = !showAdvancedSearch.value
+}
+
+const executeAdvancedSearch = async () => {
+  console.log('🔍 执行高级搜索:', advancedSearch)
+  
+  // 构建搜索参数
+  const searchParams = {
+    keyword: advancedSearch.keyword.trim(),
+    isShared: advancedSearch.isShared !== '' ? advancedSearch.isShared : null,
+    status: advancedSearch.status || null,
+    categoryId: advancedSearch.categoryId || null,
+    startDate: advancedSearch.startDate || null,
+    endDate: advancedSearch.endDate || null
   }
   
-  findAndToggleCategory(categories.value)
+  // 移除空值参数
+  Object.keys(searchParams).forEach(key => {
+    if (searchParams[key] === null || searchParams[key] === '') {
+      delete searchParams[key]
+    }
+  })
+  
+  console.log('📤 搜索参数:', searchParams)
+  
+  try {
+    isLoading.value = true
+    pagination.loading = true
+    
+    let response
+    if (Object.keys(searchParams).length === 0) {
+      // 如果没有搜索条件，加载所有文章
+      response = await articleAPI.getAllArticles(1, pagination.pageSize)
+      searchResultInfo.show = false
+    } else {
+      // 执行高级搜索
+      response = await articleAPI.complexSearch(searchParams, 1, pagination.pageSize)
+      
+      // 更新搜索结果提示
+      const conditions = []
+      if (searchParams.keyword) conditions.push(`关键词: ${searchParams.keyword}`)
+      if (searchParams.isShared !== undefined) conditions.push(`共享: ${searchParams.isShared ? '是' : '否'}`)
+      if (searchParams.status) conditions.push(`状态: ${getStatusText(searchParams.status)}`)
+      if (searchParams.categoryId) {
+        const categoryName = await getCategoryNameById(searchParams.categoryId)
+        conditions.push(`分类: ${categoryName}`)
+      }
+      if (searchParams.startDate) conditions.push(`开始: ${searchParams.startDate}`)
+      if (searchParams.endDate) conditions.push(`结束: ${searchParams.endDate}`)
+      
+      searchResultInfo.show = true
+      searchResultInfo.text = `搜索条件: ${conditions.join(', ')}`
+    }
+    
+    // 处理搜索结果
+    const data = response?.data || response
+    let articlesList = []
+    let totalCount = 0
+    
+    if (data && typeof data === 'object') {
+      if (data.list && Array.isArray(data.list)) {
+        articlesList = data.list
+        totalCount = data.total || 0
+        pagination.current = data.pageNum || 1
+        pagination.pageSize = data.pageSize || pagination.pageSize
+      } else if (Array.isArray(data)) {
+        articlesList = data
+        totalCount = data.length
+      }
+    }
+    
+    // 处理文章数据（复用现有逻辑）
+    if (articlesList.length > 0) {
+      await loadCategories()
+      
+      const processedArticles = await Promise.all(articlesList.map(async (article, index) => {
+        return {
+          ...article,
+          id: article.articleId || article.id || `temp_${Date.now()}_${index}`,
+          title: article.title || '无标题',
+          content: article.content || '',
+          summary: article.summary || article.description || '',
+          categoryId: article.categoryId || article.category_id || 0,
+          createTime: article.createTime,
+          updateTime: article.updateTime,
+          createdAt: article.createTime || new Date().toISOString(),
+          updatedAt: article.updateTime || new Date().toISOString(),
+          status: article.status || 'draft',
+          contentUrl: article.contentUrl || article.content_url,
+          needsContentLoad: !!(article.contentUrl || article.content_url) && !article.content,
+          isShared: article.isShared || article.is_shared || false,
+          username: article.username,
+          nickname: article.nickname,
+          category: await getCategoryNameById(article.categoryId || article.category_id || 0)
+        }
+      }))
+      
+      allArticles.value = processedArticles
+      pagination.total = totalCount || 0
+      
+      console.log('✅ 高级搜索完成:', {
+        找到文章: processedArticles.length,
+        总数: pagination.total,
+        搜索条件数: Object.keys(searchParams).length
+      })
+    } else {
+      allArticles.value = []
+      pagination.total = 0
+      
+      if (searchResultInfo.show) {
+        searchResultInfo.text += ` (未找到匹配文章)`
+      }
+    }
+    
+  } catch (error) {
+    console.error('❌ 高级搜索失败:', error)
+    allArticles.value = []
+    pagination.total = 0
+    
+    if (searchResultInfo.show) {
+      searchResultInfo.text += ` (搜索失败)`
+    }
+  } finally {
+    isLoading.value = false
+    pagination.loading = false
+  }
 }
+
+const resetAdvancedSearch = () => {
+  // 重置搜索条件
+  Object.keys(advancedSearch).forEach(key => {
+    advancedSearch[key] = ''
+  })
+  
+  // 隐藏搜索结果提示
+  searchResultInfo.show = false
+  searchResultInfo.text = ''
+  
+  // 重新加载所有文章
+  loadArticles(1, false)
+  
+  console.log('🔄 已重置高级搜索条件')
+}
+
+const clearAdvancedSearch = () => {
+  resetAdvancedSearch()
+}
+
+// 扁平化分类函数
+const flattenCategories = (cats, level = 0) => {
+  let result = []
+  cats.forEach(cat => {
+    const prefix = '　'.repeat(level)
+    result.push({
+      categoryId: cat.categoryId,
+      name: prefix + cat.name,
+      displayName: prefix + cat.name
+    })
+    if (cat.children && cat.children.length > 0) {
+      result.push(...flattenCategories(cat.children, level + 1))
+    }
+  })
+  return result
+}
+
+// 扁平化分类计算属性
+const flatCategories = computed(() => {
+  return flattenCategories(categories.value)
+})
 
 const selectArticle = async (article) => {
   console.log('🔍 选中文章:', {
     id: article.id,
     title: article.title,
-    hasContentUrl: !!article.contentUrl,
-    needsContentLoad: article.needsContentLoad
+    categoryId: article.categoryId || article.category_id,
+    category: article.category,
   })
   
+  // 重置评论显示状态和AI摘要状态
+  showComments.value = false
+  showAISummary.value = false
+  aiSummary.value = ''
+  
+  // 处理文章分类名称
+  let categoryName = article.category
+  console.log('🔍 文章原始分类信息:', {
+    category: article.category,
+    categoryId: article.categoryId,
+    category_id: article.category_id,
+    typeOfCategory: typeof article.category
+  })
+  
+  if (!categoryName || typeof categoryName === 'number') {
+    const categoryId = article.categoryId || article.category_id || 0
+    console.log('🏷️ 正在为选中文章获取分类名称，categoryId:', categoryId)
+    console.log('🌳 当前分类树状态:', {
+      categoriesCount: categories.value.length,
+      categories: categories.value.map(c => ({ id: c.categoryId, name: c.name }))
+    })
+    
+    categoryName = await getCategoryNameById(categoryId)
+    console.log('✅ 选中文章分类名称:', categoryName)
+  } else {
+    console.log('✅ 使用文章已有的分类名称:', categoryName)
+  }
+  
   // 先设置选中的文章
-  selectedArticle.value = { ...article }
+  selectedArticle.value = { 
+    ...article,
+    category: categoryName
+  }
   
   // 如果文章需要加载内容，异步加载
   if (article.needsContentLoad && article.contentUrl) {
@@ -494,9 +972,7 @@ const selectArticle = async (article) => {
         ...selectedArticle.value,
         content: content
       }
-      
       console.log('✅ 文章内容加载完成，长度:', content.length)
-      
     } catch (error) {
       console.error('❌ 加载文章内容失败:', error)
       selectedArticle.value = {
@@ -525,7 +1001,6 @@ const editArticle = async (article) => {
   
   // 确保有完整的文章内容再进入编辑
   let fullArticle = article
-  
   if (article.needsContentLoad && article.contentUrl && !article.content) {
     try {
       console.log('📥 编辑前先加载文章内容...')
@@ -577,11 +1052,21 @@ const onEditorClose = () => {
 const onArticleSaved = async (savedArticle) => {
   showEditor.value = false
   editingArticleId.value = null
+  
   // 重新加载文章列表
   await loadArticles()
+  
   // 选中新保存的文章
   if (savedArticle && savedArticle.data) {
-    selectedArticle.value = savedArticle.data
+    // 确保分类名称正确显示
+    const articleData = savedArticle.data
+    const categoryId = articleData.categoryId || articleData.category_id || 0
+    const categoryName = await getCategoryNameById(categoryId)
+    
+    selectedArticle.value = { 
+      ...articleData,
+      category: categoryName
+    }
   }
 }
 
@@ -618,9 +1103,87 @@ const deleteArticle = async (article) => {
   }
 }
 
+// AI摘要功能
+const getAI = async (article) => {
+  if (!article) {
+    console.error('❌ 文章数据为空')
+    return
+  }
+  
+  // 检查API Key配置
+  if (!aiService.isConfigured()) {
+    const apiKey = prompt('请输入您的DeepSeek API Key (将保存在本地)：')
+    if (!apiKey || apiKey.trim() === '') {
+      // 显示提示信息在页面上
+      aiSummary.value = '❌ 未提供API Key，无法使用AI摘要功能\n\n💡 请重新点击AI按钮并输入您的DeepSeek API Key'
+      showAISummary.value = true
+      return
+    }
+    
+    // 保存API Key到localStorage
+    localStorage.setItem('deepseek_api_key', apiKey)
+    aiService.setApiKey(apiKey)
+  }
+  
+  try {
+    aiLoading.value = true
+    console.log('🤖 开始生成AI摘要:', {
+      articleId: article.id,
+      title: article.title,
+      contentLength: article.content?.length || 0
+    })
+    
+    // 调用AI服务生成摘要
+    const summary = await aiService.generateSummary(article.title, article.content)
+    
+    // 显示摘要结果
+    aiSummary.value = summary
+    showAISummary.value = true
+    
+    console.log('✅ AI摘要生成完成:', {
+      articleId: article.id,
+      summaryLength: summary.length
+    })
+    
+  } catch (error) {
+    console.error('❌ AI摘要生成失败:', error)
+    
+    // 显示错误信息在页面上
+    aiSummary.value = `❌ AI摘要生成失败：${error.message}`
+    showAISummary.value = true
+    
+    // 如果是API Key问题，重新提示输入
+    if (error.message.includes('API Key') || error.message.includes('密钥')) {
+      localStorage.removeItem('deepseek_api_key')
+      aiSummary.value += '\n\n💡 请重新点击AI按钮并输入正确的API Key'
+    }
+  } finally {
+    aiLoading.value = false
+  }
+}
+
+// 关闭AI摘要
+const closeAISummary = () => {
+  showAISummary.value = false
+  aiSummary.value = ''
+  console.log('🔒 AI摘要已关闭')
+}
+
 // 用户相关方法
-const editProfile = () => {
+const editProfile = async () => {
+  console.log('🎯 ===== 编辑个人资料被点击 =====')
+  console.log('✏️ 打开个人信息编辑器...')
   showUserMenu.value = false
+  
+  // 在打开编辑器之前，先加载最新的用户信息
+  try {
+    const userInfo = await loadUserInfo()
+    console.log('✅ 用户信息已刷新，当前用户信息:', currentUserInfo.value)
+    console.log('🔧 即将传递给UserProfileEditor的用户信息:', userInfo)
+  } catch (error) {
+    console.warn('⚠️ 刷新用户信息失败，仍然打开编辑器:', error.message)
+  }
+  
   showProfileEditor.value = true
 }
 
@@ -648,21 +1211,53 @@ const closeProfileEditor = () => {
 }
 
 const onProfileUpdated = (updatedUser) => {
-  // 更新本地用户信息
-  userName.value = updatedUser.username || updatedUser.name || userName.value
+  console.log('📝 用户信息已更新:', updatedUser)
+  
+  // 更新本地用户信息显示
+  userName.value = updatedUser.username || updatedUser.nickname || userName.value
   userEmail.value = updatedUser.email || userEmail.value
   if (updatedUser.avatar) {
     userAvatar.value = updatedUser.avatar
   }
   
+  // 更新完整的用户信息对象
+  currentUserInfo.value = updatedUser
+  
   // 更新localStorage中的用户信息
   localStorage.setItem('user', JSON.stringify(updatedUser))
-    closeProfileEditor()
+  
+  // 关闭编辑器
+  closeProfileEditor()
 }
 
+// 搜索相关方法
 const searchArticles = () => {
-  searchState.query = searchQuery.value
+  // 去除多余的空格
+  const query = searchQuery.value.trim()
+  
+  // 如果搜索关键词为空，则清除搜索
+  if (!query) {
+    clearFilters()
+    return
+  }
+  
+  // 更新搜索状态并执行搜索
+  searchState.query = query
+  console.log('🔍 执行搜索:', {
+    query: query,
+    type: searchState.type,
+    searchIn: searchState.type === 'complex' ? ['title', 'content', 'summary'] : ['title']
+  })
   loadArticles(1, true)
+}
+
+// 搜索类型变化处理
+const onSearchTypeChange = () => {
+  // 如果当前有搜索关键词，重新执行搜索
+  if (searchState.query && searchState.query.trim()) {
+    console.log('🔄 搜索类型变化，重新搜索:', searchState.type)
+    loadArticles(1, true)
+  }
 }
 
 // 分页相关方法
@@ -686,6 +1281,7 @@ const filterByCategory = (categoryId) => {
 const clearFilters = () => {
   searchState.query = ''
   searchQuery.value = ''
+  searchState.type = 'complex' // 默认使用复杂搜索（支持内容搜索）
   searchState.filters = {
     categoryId: null,
     status: null,
@@ -714,35 +1310,46 @@ const getStatusText = (status) => {
 
 // 加载数据
 const loadArticles = async (page = 1, search = false) => {
+  console.log('🚀 loadArticles 函数被调用，参数:', { page, search })
   isLoading.value = true
   pagination.loading = true
   
+  // 检查认证状态
   try {
-    let response
-      console.log('🔍 开始加载用户文章:', { 
-      page, 
-      search, 
-      query: searchState.query,
-      hasUserId: !!localStorage.getItem('userId'),
-      baseURL: import.meta.env.VITE_API_BASE_URL
-    })
-    
-    // 检查认证状态
     const userId = localStorage.getItem('userId')
     if (!userId) {
       console.error('❌ 没有找到用户ID，可能需要重新登录')
       throw new Error('未登录或登录已过期')
     }
     
+    let response
     if (search && searchState.query) {
       // 执行搜索
-      console.log('🔍 执行搜索:', searchState.query)
+      console.log('🔍 执行搜索:', {
+        query: searchState.query,
+        type: searchState.type,
+        categoryFilter: searchState.filters.categoryId
+      })
+      
       try {
-        response = await articleAPI.simpleSearch(searchState.query, page, pagination.pageSize)
+        if (searchState.type === 'complex') {
+          // 使用复杂搜索，支持标题、内容、摘要搜索
+          const searchOptions = {
+            keyword: searchState.query,
+            searchIn: ['title', 'content', 'summary'], // 搜索范围包括内容
+            categoryId: searchState.filters.categoryId,
+            status: searchState.filters.status
+          }
+          response = await articleAPI.complexSearch(searchOptions, page, pagination.pageSize)
+        } else {
+          // 使用简单搜索（只搜索标题）
+          response = await articleAPI.simpleSearch(searchState.query, page, pagination.pageSize)
+        }
       } catch (searchError) {
         console.warn('⚠️ 搜索失败，回退到普通获取:', searchError)
         response = await articleAPI.getAllArticles(page, pagination.pageSize, searchState.filters.categoryId)
-      }    } else {
+      }
+    } else {
       // 获取用户所有文章
       console.log('📊 调用用户文章API...', {
         pageNum: page,
@@ -820,15 +1427,35 @@ const loadArticles = async (page = 1, search = false) => {
         hasContentUrl: !!(a.contentUrl || a.content_url)
       }))
     })
-      if (articlesList.length > 0) {
-      const processedArticles = articlesList.map((article, index) => {
+    
+    if (articlesList.length > 0) {
+      console.log('🔍 开始处理文章数据，文章数量:', articlesList.length)
+      console.log('📝 文章样本数据:', articlesList.slice(0, 1).map(a => ({
+        articleId: a.articleId,
+        categoryId: a.categoryId,
+        category_id: a.category_id,
+        title: a.title,
+      })))
+      
+      // 先确保分类数据已加载
+      console.log('🌳 在处理文章前先加载分类数据...')
+      await loadCategories()
+      
+      const processedArticles = await Promise.all(articlesList.map(async (article, index) => {
+        console.log(`🔍 处理文章 ${index + 1}:`, {
+          title: article.title,
+          categoryId: article.categoryId,
+          category_id: article.category_id,
+          finalCategoryId: article.categoryId || article.category_id || 0,
+        })
+        
         // 根据API文档，后端返回的字段是：articleId, createTime, updateTime
         const processed = {
           ...article,
           // 确保有唯一ID - API返回articleId
           id: article.articleId || article.id || `temp_${Date.now()}_${index}`,
-          title: article.title || '无标题',
-          content: article.content || '', // 简易模式可能没有content
+          title: article.title || '无标题', // 简易模式可能没有content
+          content: article.content || '',
           summary: article.summary || article.description || '',
           categoryId: article.categoryId || article.category_id || 0,
           // 保持原始API字段名，同时映射为组件期望的字段名
@@ -843,8 +1470,8 @@ const loadArticles = async (page = 1, search = false) => {
           // 添加用户信息（从API响应中获取）
           username: article.username,
           nickname: article.nickname,
-          // 分类名称将通过分类数据关联获取
-          category: '未分类',
+          // 通过API获取真实的分类名称
+          category: await getCategoryNameById(article.categoryId || article.category_id || 0),
           // 保留原始字段便于调试
           originalData: {
             articleId: article.articleId,
@@ -865,14 +1492,14 @@ const loadArticles = async (page = 1, search = false) => {
           hasContentUrl: !!processed.contentUrl,
           needsContentLoad: processed.needsContentLoad,
           categoryId: processed.categoryId,
-          status: processed.status
+          categoryName: processed.category, // 显示获取到的分类名称
+          status: processed.status,
         })
-        
         return processed
-      })
+      }))
       
       allArticles.value = processedArticles
-      pagination.total = totalCount
+      pagination.total = totalCount || 0
       
       console.log('✅ 用户文章数据加载成功:', {
         count: processedArticles.length,
@@ -895,11 +1522,11 @@ const loadArticles = async (page = 1, search = false) => {
       console.warn('⚠️ 用户暂无文章或API返回空数据')
       allArticles.value = []
       pagination.total = 0
+      
+      // 即使没有文章，也要加载分类数据
+      await loadCategories()
     }
-
-    // 加载分类数据
-    await loadCategories()
-      } catch (error) {
+  } catch (error) {
     console.error('❌ 加载用户文章失败:', error)
     console.error('API错误详情:', {
       message: error.message,
@@ -938,7 +1565,6 @@ const loadArticles = async (page = 1, search = false) => {
     
     // 在页面上显示错误（可选）
     console.warn('💡 错误提示:', errorMessage)
-    
     // 显示错误状态，不使用模拟数据
     allArticles.value = []
     pagination.total = 0
@@ -955,80 +1581,6 @@ const loadArticles = async (page = 1, search = false) => {
   }
 }
 
-// 用户文章API测试
-const testUserArticlesAPI = async () => {
-  try {
-    const response = await articleAPI.getAllArticles(1, 10)
-    console.log('✅ 用户文章API测试成功:', response)
-  } catch (error) {
-    console.error('❌ 用户文章API测试失败:', error)
-  }
-}
-
-// 直接API调用测试
-const testDirectAPICall = async () => {
-  const userId = localStorage.getItem('userId')
-  console.log('🧪 进行直接API调用测试:', { userId })
-  
-  if (!userId) {
-    console.error('❌ 直接测试失败：没有userId')
-    return
-  }
-  
-  try {
-    console.log('📡 直接调用 fetch API...')
-    const response = await fetch('/api/v1/articles/all/1/10', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-Id': userId
-      }
-    })
-    
-    console.log('📥 直接API响应:', {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok,
-      headers: Object.fromEntries(response.headers.entries())
-    })
-    
-    if (response.ok) {
-      const data = await response.json()
-      console.log('✅ 直接API测试成功，响应数据:', data)
-      
-      if (data && data.list && Array.isArray(data.list)) {
-        console.log(`📝 找到 ${data.list.length} 篇文章，总数: ${data.total}`)
-        if (data.list.length > 0) {
-          console.log('📄 文章样例:', data.list[0])
-        }
-      } else {
-        console.warn('⚠️ 响应数据格式异常')
-      }
-    } else {
-      const errorText = await response.text()
-      console.error('❌ 直接API测试失败:', errorText)
-    }
-  } catch (error) {
-    console.error('❌ 直接API调用异常:', error)
-  }
-}
-
-// 分类API测试
-const testCategoryAPI = async () => {
-  try {
-    const response = await categoryAPI.getCategoryTree(0)
-    console.log('✅ 分类API测试成功:', response)
-  } catch (error) {
-    console.error('❌ 分类API测试失败:', error)
-  }
-}
-
-// 移除模拟数据方法，或者只在真正需要测试时使用
-const getMockArticles = () => {
-  console.warn('⚠️ 不再使用模拟数据，请检查API连接')
-  return []
-}
-
 // 加载分类数据
 const loadCategories = async () => {
   try {
@@ -1037,25 +1589,25 @@ const loadCategories = async () => {
     // 检查认证状态
     const userId = localStorage.getItem('userId')
     if (!userId) {
-      console.error('❌ 没有找到用户ID，无法加载分类')
-      categories.value = []
+      console.error('❌ 没有找到用户ID，用户未登录')
+      // 跳转到登录页面
+      window.location.href = '/login'
       return
     }
+    console.log('🔑 使用userId加载分类:', localStorage.getItem('userId'))
     
-    console.log('🔑 使用userId加载分类:', userId)
-    
-    // 使用分类树API获取用户的所有分类（传递参数0）
+    // 使用分类树API获取用户的所有分类
     const categoryData = await categoryAPI.getCategoryTree(0)
-    
-    console.log('🌳 分类树API响应:', {
+    console.log('🌳 分类树API响应详情:', {
       hasData: !!categoryData,
       dataType: typeof categoryData,
       isArray: Array.isArray(categoryData),
       length: Array.isArray(categoryData) ? categoryData.length : 0,
-      sample: Array.isArray(categoryData) && categoryData.length > 0 ? categoryData[0] : null
+      sample: Array.isArray(categoryData) && categoryData.length > 0 ? categoryData[0] : null,
+      fullData: categoryData
     })
     
-    // API直接返回数组，不需要解包装
+    // 处理响应数据
     if (Array.isArray(categoryData) && categoryData.length > 0) {
       // 递归设置展开状态，处理parentId为null的情况
       const setCategoryExpanded = (cats) => {
@@ -1079,19 +1631,27 @@ const loadCategories = async () => {
           hasChildren: !!(c.children && c.children.length > 0)
         }))
       })
-    } else {
-      console.warn('⚠️ 分类数据为空')
+    } else if (Array.isArray(categoryData) && categoryData.length === 0) {
+      console.warn('⚠️ 分类数据为空数组，用户可能没有创建分类')
       categories.value = []
-      
+    } else {
+      console.warn('⚠️ 分类数据格式异常:', categoryData)
+      categories.value = []
       // 尝试从文章构建分类作为后备方案
       if (allArticles.value.length > 0) {
         console.log('📝 尝试从文章构建分类...')
         buildCategoriesFromArticles()
       }
     }
-    
+    // 尝试从文章构建分类作为后备方案
   } catch (error) {
-    console.error('❌ 加载分类树失败:', error)
+    console.error('❌ 加载分类树失败:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      url: error.config?.url,
+      stack: error.stack
+    })
     categories.value = []
     
     // 尝试从文章构建分类作为后备方案
@@ -1124,21 +1684,137 @@ const buildCategoriesFromArticles = () => {
   console.log('📝 从文章构建的分类:', categories.value.length)
 }
 
-// 加载用户信息
-const loadUserInfo = () => {
-  const userStr = localStorage.getItem('user')
-  if (userStr) {
-    try {
-      const user = JSON.parse(userStr)
-      userName.value = user.username || user.name || 'Demo User'
-      userEmail.value = user.email || 'demo@artman.com'
-      // 加载用户头像，支持本地文件和URL
-      if (user.avatar) {
-        userAvatar.value = user.avatar
+// 根据分类ID获取分类名称
+const getCategoryNameById = async (categoryId) => {
+  console.log(`🏷️ getCategoryNameById 被调用，categoryId: ${categoryId}, 类型: ${typeof categoryId}`)
+  if (!categoryId || categoryId === 0) {
+    console.log(`🏷️ 分类ID为空或0，返回"未分类"`)
+    return '未分类'
+  }
+  
+  try {
+    // 首先尝试从本地分类树中查找
+    const findCategoryInTree = (cats, targetId) => {
+      console.log(`🔍 在分类树中查找ID: ${targetId}`)
+      for (const cat of cats) {
+        console.log(`🔍 检查分类: ${cat.name} (ID: ${cat.categoryId})`)
+        if (cat.categoryId === targetId || cat.categoryId === String(targetId)) {
+          console.log(`✅ 在分类树中找到匹配: ${cat.name}`)
+          return cat.name
+        }
+        if (cat.children && cat.children.length > 0) {
+          const found = findCategoryInTree(cat.children, targetId)
+          if (found) return found
+        }
       }
-    } catch (error) {
-      console.error('解析用户信息失败:', error)
+      return null
     }
+    
+    console.log(`🌳 当前分类树内容:`, categories.value.map(c => ({ id: c.categoryId, name: c.name })))
+    const localCategoryName = findCategoryInTree(categories.value, categoryId)
+    if (localCategoryName) {
+      console.log(`✅ 从本地分类树获取分类名称: ${localCategoryName}`)
+      return localCategoryName
+    }
+    
+    // 如果本地没有找到，通过API获取分类详情
+    console.log(`🔍 本地分类树未找到，通过API获取分类ID ${categoryId} 的名称`)
+    const response = await categoryAPI.getCategory(categoryId)
+    
+    console.log(`📥 分类API响应:`, response)
+    
+    // 简化响应处理，直接取name
+    let categoryName = '未分类'
+    if (response?.data?.name) {
+      categoryName = response.data.name
+      console.log(`✅ 从API获取分类名称: ${categoryName}`)
+    } else if (response?.name) {
+      categoryName = response.name
+      console.log(`✅ 从API获取分类名称(直接格式): ${categoryName}`)
+    } else {
+      console.warn(`⚠️ API未返回有效的分类名称:`, response)
+    }
+    
+    return categoryName
+  } catch (error) {
+    console.error(`❌ 获取分类名称失败 (ID: ${categoryId}):`, error)
+    return '未分类'
+  }
+}
+
+// 加载用户信息
+const loadUserInfo = async () => {
+  console.log('👤 开始加载用户信息...')
+  
+  // 首先检查用户是否登录
+  const userId = localStorage.getItem('userId')
+  console.log('🔍 localStorage中的userId:', userId)
+  console.log('🔍 localStorage中的所有内容:', Object.keys(localStorage).map(key => ({key, value: localStorage.getItem(key)})))
+  
+  // 首先尝试从API获取最新的用户信息
+  try {
+    if (userId) {
+      console.log('🔍 从API获取用户信息，userId:', userId)
+      const response = await authAPI.getUserInfo(userId)
+      
+      console.log('📥 API原始响应:', response)
+      
+      // 检查两种可能的响应格式
+      const responseData = response.data || response
+      console.log('📥 响应数据部分:', responseData)
+      
+      if (responseData && responseData.code === 200 && responseData.data) {
+        const user = responseData.data
+        console.log('✅ 成功获取用户信息:', user)
+        
+        // 更新页面显示的用户信息
+        userName.value = user.username || user.nickname || 'Demo User'
+        userEmail.value = user.email || 'demo@artman.com'
+        
+        // 更新头像
+        if (user.avatar) {
+          userAvatar.value = user.avatar
+        }
+        
+        // 将最新的用户信息保存到localStorage
+        localStorage.setItem('user', JSON.stringify(user))
+        
+        // 更新完整的用户信息对象
+        currentUserInfo.value = user
+        
+        return user // 返回用户信息供其他地方使用
+      } else {
+        throw new Error(`API返回错误: code=${responseData?.code}, message=${responseData?.message}`)
+      }
+    } else {
+      throw new Error('用户ID不存在，可能未登录')
+    }
+  } catch (error) {
+    console.warn('⚠️ 从API获取用户信息失败:', error.message)
+    
+    // 如果API调用失败，尝试从localStorage读取
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr)
+        userName.value = user.username || user.nickname || user.name || 'Demo User'
+        userEmail.value = user.email || 'demo@artman.com'
+        // 加载用户头像，支持本地文件和URL
+        if (user.avatar) {
+          userAvatar.value = user.avatar
+        }
+        console.log('📋 从localStorage加载用户信息成功')
+        currentUserInfo.value = user
+        return user
+      } catch (parseError) {
+        console.error('❌ 解析localStorage中的用户信息失败:', parseError)
+      }
+    }
+    
+    // 如果都失败了，使用默认值
+    userName.value = 'Demo User'
+    userEmail.value = 'demo@artman.com'
+    return null
   }
 }
 
@@ -1147,6 +1823,73 @@ const handleClickOutside = (event) => {
   if (!event.target.closest('.navbar-user')) {
     showUserMenu.value = false
   }
+}
+
+// 评论相关方法
+const onCommentCountChange = (count) => {
+  console.log('💬 评论数量变更:', count)
+  // 可以在这里更新文章信息中的评论数量
+  if (selectedArticle.value) {
+    selectedArticle.value.commentCount = count
+  }
+}
+
+// 用户菜单相关方法
+const toggleUserMenu = () => {
+  console.log('🖱️ 点击了用户头像')
+  console.log('🔧 当前showUserMenu状态:', showUserMenu.value)
+  showUserMenu.value = !showUserMenu.value
+  console.log('🔧 切换后showUserMenu状态:', showUserMenu.value)
+}
+
+// 调试用户信息的函数
+const debugUserInfo = async () => {
+  console.log('🔍 ===== 开始调试用户信息 =====')
+  showUserMenu.value = false
+  
+  // 1. 检查localStorage
+  const userId = localStorage.getItem('userId')
+  const userStr = localStorage.getItem('user')
+  console.log('📱 localStorage内容:')
+  console.log('  userId:', userId)
+  console.log('  user:', userStr)
+  
+  // 2. 直接调用API
+  if (userId) {
+    try {
+      console.log('📡 直接调用API...')
+      const response = await authAPI.getUserInfo(userId)
+      console.log('📥 API原始响应:', response)
+      console.log('📥 响应数据:', response.data)
+      
+      // 检查两种可能的响应格式
+      const responseData = response.data || response
+      console.log('📥 实际响应数据部分:', responseData)
+      
+      if (responseData && responseData.code === 200) {
+        console.log('✅ API调用成功，用户数据:', responseData.data)
+        
+        // 直接更新显示
+        if (responseData.data) {
+          const user = responseData.data
+          userName.value = user.username || user.nickname || '❌ 无用户名'
+          userEmail.value = user.email || '❌ 无邮箱'
+          console.log('🔄 已更新显示:', {
+            userName: userName.value,
+            userEmail: userEmail.value
+          })
+        }
+      } else {
+        console.log('❌ API返回错误:', responseData)
+      }
+    } catch (error) {
+      console.log('❌ API调用失败:', error)
+    }
+  } else {
+    console.log('❌ 没有userId，无法调用API')
+  }
+  
+  console.log('🔍 ===== 调试结束 =====')
 }
 
 // 生命周期钩子
@@ -1159,16 +1902,28 @@ onMounted(async () => {
     nodeEnv: import.meta.env.NODE_ENV
   })
   
-  // 首先加载用户信息
-  loadUserInfo()
+  // 调试响应式数据的初始状态
+  console.log('📊 初始响应式数据状态:', {
+    showUserMenu: showUserMenu.value,
+    showProfileEditor: showProfileEditor.value,
+    userName: userName.value,
+    userEmail: userEmail.value,
+    currentUserInfo: currentUserInfo.value
+  })
   
-  // 然后加载文章数据
+  // 首先加载用户信息
+  await loadUserInfo()
+  
+  // 初始化AI服务配置
+  const savedApiKey = localStorage.getItem('deepseek_api_key')
+  if (savedApiKey) {
+    aiService.setApiKey(savedApiKey)
+    console.log('🔑 已从本地存储加载DeepSeek API Key')
+  }
+  
+  // 然后加载文章数据（会自动先加载分类数据）
   console.log('📊 开始加载文章数据...')
   await loadArticles(1, false)
-  
-  // 单独加载分类数据（即使文章加载失败也要尝试）
-  console.log('🌳 开始加载分类数据...')
-  await loadCategories()
   
   // 添加延迟后的状态检查
   setTimeout(() => {
@@ -1199,6 +1954,72 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
+
+// 直接API调用测试
+// 用户文章API测试
+const testUserArticlesAPI = async () => {
+  try {
+    const response = await articleAPI.getAllArticles(1, 10)
+    console.log('✅ 用户文章API测试成功:', response)
+  } catch (error) {
+    console.error('❌ 用户文章API测试失败:', error)
+  }
+}
+
+// 直接API调用测试
+const testDirectAPICall = async () => {
+  const userId = localStorage.getItem('userId')
+  console.log('🧪 进行直接API调用测试:', { userId })
+  if (!userId) {
+    console.error('❌ 直接测试失败：没有userId')
+    return
+  }
+  try {
+    console.log('📡 直接调用 fetch API...')
+    const response = await fetch('/api/v1/articles/all/1/10', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User-Id': userId
+      }
+    })
+    
+    console.log('📥 直接API响应:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+      headers: Object.fromEntries(response.headers.entries())
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      console.log('✅ 直接API测试成功，响应数据:', data)
+      if (data && data.list && Array.isArray(data.list)) {
+        console.log(`📝 找到 ${data.list.length} 篇文章，总数: ${data.total}`)
+        if (data.list.length > 0) {
+          console.log('📄 文章样例:', data.list[0])
+        }
+      } else {
+        console.warn('⚠️ 响应数据格式异常')
+      }
+    } else {
+      const errorText = await response.text()
+      console.error('❌ 直接API测试失败:', errorText)
+    }
+  } catch (error) {
+    console.error('❌ 直接API调用异常:', error)
+  }
+}
+
+// 分类API测试
+const testCategoryAPI = async () => {
+  try {
+    const response = await categoryAPI.getCategoryTree(0)
+    console.log('✅ 分类API测试成功:', response)
+  } catch (error) {
+    console.error('❌ 分类API测试失败:', error)
+  }
+}
 </script>
 
 <style scoped>
@@ -1227,7 +2048,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 1rem;
-  color: white;
 }
 
 .logo {
@@ -1239,6 +2059,7 @@ onUnmounted(() => {
 .brand-name {
   font-size: 28px;
   font-weight: 700;
+  color: white;
   margin: 0;
   letter-spacing: -0.5px;
 }
@@ -1366,16 +2187,17 @@ onUnmounted(() => {
 /* 主体内容区域 */
 .main-content {
   flex: 1;
+  height: calc(100vh - 80px);
   display: flex;
-  height: calc(90vh - 20px);
-  margin-top: 20px;
   gap: 20px;
   padding: 0 2rem;
+  overflow: hidden;
+  margin-top: 20px;
 }
 
 /* 左侧边栏 */
 .sidebar {
-  width: 320px;
+  width: 360px;
   background: white;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
@@ -1453,7 +2275,7 @@ onUnmounted(() => {
 
 .search-box input {
   width: 100%;
-  padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+  padding: 0.75rem 2.5rem 0.75rem 2.5rem;
   border: 1px solid #d1d5db;
   border-radius: 8px;
   font-size: 14px;
@@ -1465,6 +2287,67 @@ onUnmounted(() => {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  z-index: 2;
+}
+
+.search-clear-btn:hover {
+  background: #f1f5f9;
+  color: #374151;
+}
+
+/* 搜索选项 */
+.search-options {
+  margin: 0 1.5rem 0.5rem;
+  padding: 0.5rem;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.search-type-label {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.search-type-options {
+  display: flex;
+  gap: 1rem;
+}
+
+.search-type-option {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+}
+
+.search-type-option input[type="radio"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.search-type-option:hover {
+  color: #667eea;
 }
 
 /* 筛选控件 */
@@ -1697,10 +2580,12 @@ onUnmounted(() => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  max-height: calc(100vh - 100px);
+  min-height: calc(100vh - 140px);
 }
 
 .empty-state {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1764,15 +2649,17 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0; /* 确保子元素可以正确缩放 */
 }
 
 .article-header {
-  padding: 2rem 2rem 1rem;
+  padding: 1.5rem 2rem 1rem;
   border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 2rem;
+  flex-shrink: 0; /* 防止头部被压缩 */
 }
 
 .article-meta {
@@ -1823,6 +2710,65 @@ onUnmounted(() => {
   gap: 0.5rem;
 }
 
+.article-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  min-height: 40vh;
+  max-height: 75vh;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* 评论切换按钮区域 */
+.comments-toggle-section {
+  margin-top: 2rem;
+  padding: 1.5rem 2rem;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+  background: #f8fafc;
+  flex-shrink: 0;
+}
+
+.comments-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 2rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  min-width: 200px;
+  justify-content: center;
+}
+
+.comments-toggle-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.comments-toggle-btn.active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.comments-toggle-btn.active:hover {
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.comments-toggle-btn .icon-chevron {
+  transition: transform 0.3s ease;
+}
+
+.comments-toggle-btn .icon-chevron.expanded {
+  transform: rotate(180deg);
+}
+
 .btn-action {
   width: 40px;
   height: 40px;
@@ -1843,16 +2789,26 @@ onUnmounted(() => {
   color: #374151;
 }
 
+.btn-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #f1f5f9;
+}
+
 .btn-action.danger:hover {
   background: #fef2f2;
   border-color: #fecaca;
   color: #dc2626;
 }
 
-.article-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 2rem;
+/* AI按钮特殊样式 */
+.btn-action .icon-ai {
+  font-size: 16px;
+}
+
+.btn-action .icon-loading {
+  font-size: 14px;
+  animation: spin 1s linear infinite;
 }
 
 .content-preview {
@@ -1877,31 +2833,12 @@ onUnmounted(() => {
   font-size: 24px;
   border-bottom: 1px solid #e2e8f0;
   padding-bottom: 0.5rem;
+  color: #3b82f6; /* 设置 h2 标题为蓝色 */
 }
 
 .content-preview p {
   margin-bottom: 1rem;
 }
-
-/* 图标样式 (使用CSS伪元素模拟图标) */
-.icon-plus::before { content: '+'; font-weight: bold; }
-.icon-search::before { content: '🔍'; }
-.icon-chevron::before { content: '▶'; }
-.icon-document::before { content: '📄'; }
-.icon-folder::before { content: '📁'; }
-.icon-document-empty::before { content: '📋'; }
-.icon-calendar::before { content: '📅'; }
-.icon-clock::before { content: '🕒'; }
-.icon-tag::before { content: '🏷️'; }
-.icon-status::before { content: '⚪'; }
-.icon-edit::before { content: '✏️'; }
-.icon-share::before { content: '🔗'; }
-.icon-delete::before { content: '🗑️'; }
-.icon-settings::before { content: '⚙️'; }
-.icon-logout::before { content: '🚪'; }
-.icon-error::before { content: '❌'; }
-.icon-refresh::before { content: '🔄'; }
-.icon-close::before { content: '✕'; }
 
 /* 分页控件样式 */
 .pagination-container {
@@ -2101,7 +3038,6 @@ onUnmounted(() => {
   .main-content {
     padding: 0 1rem;
   }
-  
   .sidebar {
     width: 280px;
   }
@@ -2111,31 +3047,25 @@ onUnmounted(() => {
   .navbar {
     padding: 0 1rem;
   }
-  
   .brand-name {
     font-size: 24px;
   }
-  
   .main-content {
     flex-direction: column;
     gap: 1rem;
   }
-  
   .sidebar {
     width: 100%;
     height: 300px;
   }
-  
   .article-title {
     font-size: 24px;
   }
-  
   .article-header {
     flex-direction: column;
     align-items: stretch;
     gap: 1rem;
   }
-  
   .article-actions {
     align-self: flex-end;
   }
@@ -2163,4 +3093,431 @@ onUnmounted(() => {
 .article-body::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* AI摘要区域样式 */
+.ai-summary-section {
+  margin: 2rem 0;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+  animation: slideInDown 0.4s ease-out;
+}
+
+.ai-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+}
+
+.ai-summary-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.ai-icon {
+  font-size: 1.2rem;
+  animation: pulse 2s infinite;
+}
+
+.ai-close-btn {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+.ai-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.ai-summary-content {
+  padding: 1.5rem;
+  line-height: 1.7;
+  color: #1e40af;
+  font-size: 0.95rem;
+  white-space: pre-line;
+  background: white;
+  margin: 0;
+}
+
+.ai-summary-footer {
+  padding: 0.75rem 1.5rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  text-align: right;
+}
+
+.ai-powered {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { 
+    transform: scale(1); 
+  }
+  50% { 
+    transform: scale(1.1); 
+  }
+}
+
+/* 评论区域样式 */
+.article-comments-section {
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 1rem 2rem 2rem;
+  background: #fafafa;
+  animation: slideDown 0.3s ease-out;
+  border-radius: 0 0 12px 12px;
+}
+
+/* 评论区滚动条样式 */
+.article-comments-section::-webkit-scrollbar {
+  width: 8px;
+}
+
+.article-comments-section::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.article-comments-section::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.article-comments-section::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 高级搜索区域样式 */
+.advanced-search-section {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin-bottom: 2rem;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.search-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem 1rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.search-header h4 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.search-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #64748b;
+  transition: all 0.2s ease;
+}
+
+.search-toggle-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.search-toggle-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: transparent;
+}
+
+.basic-search {
+  padding: 1rem 2rem;
+}
+
+.search-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-input-group i {
+  position: absolute;
+  left: 1rem;
+  color: #9ca3af;
+  z-index: 2;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.875rem 3rem 0.875rem 2.5rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background: #fafbfc;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  background: white;
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.search-clear-btn:hover {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.advanced-filters {
+  padding: 1rem 2rem 2rem;
+  background: #fafbfc;
+  border-top: 1px solid #f3f4f6;
+}
+
+.filter-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  align-items: end;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  flex: 1;
+}
+
+.filter-item label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.filter-item select,
+.date-input {
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  background: white;
+  color: #374151;
+  transition: border-color 0.2s ease;
+}
+
+.filter-item select:focus,
+.date-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.filter-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.btn-search,
+.btn-reset {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btn-search {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-search:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-search:disabled {
+  background: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-reset {
+  background: #f8fafc;
+  color: #6b7280;
+  border: 1px solid #e2e8f0;
+}
+
+.btn-reset:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #374151;
+}
+
+.search-result-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: linear-gradient(135deg, #ecfccb 0%, #d9f99d 100%);
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+}
+
+.result-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #365314;
+  font-weight: 500;
+}
+
+.clear-search-btn {
+  background: none;
+  border: 1px solid #84cc16;
+  color: #65a30d;
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-search-btn:hover {
+  background: #84cc16;
+  color: white;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .search-header {
+    padding: 1rem 1.5rem 0.75rem;
+  }
+  
+  .basic-search {
+    padding: 0.75rem 1.5rem;
+  }
+  
+  .advanced-filters {
+    padding: 0.75rem 1.5rem 1.5rem;
+  }
+  
+  .filter-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .filter-item {
+    min-width: auto;
+  }
+  
+  .filter-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .btn-search,
+  .btn-reset {
+    justify-content: center;
+  }
+  
+  .search-result-info {
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: center;
+  }
+}
+
+/* 图标样式 (使用CSS伪元素模拟图标) */
+.icon-plus::before { content: '+'; font-weight: bold; }
+.icon-search::before { content: '🔍'; }
+.icon-chevron::before { content: '▶'; }
+.icon-document::before { content: '📄'; }
+.icon-folder::before { content: '📁'; }
+.icon-document-empty::before { content: '📋'; }
+.icon-calendar::before { content: '📅'; }
+.icon-clock::before { content: '🕒'; }
+.icon-tag::before { content: '🏷️'; }
+.icon-status::before { content: '⚪'; }
+.icon-edit::before { content: '✏️'; }
+.icon-share::before { content: '🔗'; }
+.icon-delete::before { content: '🗑️'; }
+.icon-settings::before { content: '⚙️'; }
+.icon-logout::before { content: '🚪'; }
+.icon-error::before { content: '❌'; }
+.icon-refresh::before { content: '🔄'; }
+.icon-close::before { content: '✕'; }
+.icon-comment::before { content: "💬"; }
 </style>

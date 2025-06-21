@@ -282,14 +282,12 @@ const onAvatarError = (event) => {
 const viewProfile = () => {
   showUserDropdown.value = false
   // 这里可以跳转到个人主页
-  console.log('查看个人主页')
 }
 
 // 打开设置
 const openSettings = () => {
   showUserDropdown.value = false
   // 这里可以跳转到设置页面
-  console.log('打开设置')
 }
 
 // 关闭用户信息编辑器
@@ -334,7 +332,7 @@ const viewStats = () => {
 }
 
 const exportData = () => {
-  console.log('导出数据功能待实现')
+  // 导出数据功能待实现
 }
 </script>
 

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创建测试分类</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .button { background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 4px; white-space: pre-wrap; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>🏗️ 创建测试分类</h1>
+    
+    <div>
+        <h2>1. 设置用户ID</h2>
+        <button class="button" onclick="setUser()">设置用户ID为2</button>
+        <div id="user-result" class="result"></div>
+    </div>
+
+    <div>
+        <h2>2. 创建测试分类</h2>
+        <button class="button" onclick="createCategory('技术文档')">创建"技术文档"分类</button>
+        <button class="button" onclick="createCategory('生活笔记')">创建"生活笔记"分类</button>
+        <button class="button" onclick="createCategory('工作总结')">创建"工作总结"分类</button>
+        <div id="create-result" class="result"></div>
+    </div>
+
+    <div>
+        <h2>3. 验证分类树</h2>
+        <button class="button" onclick="checkCategoryTree()">检查分类树</button>
+        <div id="tree-result" class="result"></div>
+    </div>
+
+    <script>
+        function setUser() {
+            localStorage.setItem('userId', '2');
+            document.getElementById('user-result').innerHTML = 
+                '<div class="success">✅ 已设置用户ID: 2</div>';
+        }
+
+        async function createCategory(name) {
+            const resultDiv = document.getElementById('create-result');
+            
+            try {
+                const userId = localStorage.getItem('userId') || '2';
+                
+                const response = await fetch('/api/v1/categories', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Id': userId
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        parentId: null
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML += 
+                        `<div class="success">✅ 成功创建分类 "${name}": ${JSON.stringify(data, null, 2)}</div>`;
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML += 
+                        `<div class="error">❌ 创建分类 "${name}" 失败: ${errorText}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML += 
+                    `<div class="error">❌ 创建分类 "${name}" 异常: ${error.message}</div>`;
+            }
+        }
+
+        async function checkCategoryTree() {
+            const resultDiv = document.getElementById('tree-result');
+            
+            try {
+                const userId = localStorage.getItem('userId') || '2';
+                
+                const response = await fetch('/api/v1/categories/tree/', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Id': userId
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = 
+                        `<div class="success">✅ 分类树数据: ${JSON.stringify(data, null, 2)}</div>`;
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = 
+                        `<div class="error">❌ 获取分类树失败: ${errorText}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = 
+                    `<div class="error">❌ 获取分类树异常: ${error.message}</div>`;
+            }
+        }
+
+        // 页面加载时自动设置用户
+        window.onload = function() {
+            setUser();
+        };
+    </script>
+</body>
+</html>

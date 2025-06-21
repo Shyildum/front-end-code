@@ -270,12 +270,17 @@ const handleSubmitCategory = async () => {
       response = await categoryAPI.updateCategory(editingCategoryId.value, categoryData)
     } else {
       response = await categoryAPI.createCategory(categoryData)
-    }
-    
-    console.log(`${isEdit ? '更新' : '创建'}分类响应:`, response)
-
-    // 检查响应格式
-    if (response && response.code === 0) {
+    }    console.log(`${isEdit ? '更新' : '创建'}分类响应:`, response)
+    console.log('响应详情:', {
+      code: response?.code,
+      message: response?.message,
+      detail: response?.detail,
+      data: response?.data,
+      isEdit: isEdit,
+      expectedCode: isEdit ? 200 : 201
+    })    // 检查响应格式 - 创建分类返回201，更新分类返回200
+    const expectedCode = isEdit ? 200 : 201
+    if (response && response.code === expectedCode) {
       successMessage.value = response.detail || response.message || `分类${isEdit ? '更新' : '创建'}成功`
       
       // 重置表单和状态
@@ -285,8 +290,16 @@ const handleSubmitCategory = async () => {
       await loadCategories()
       
       console.log(`分类${isEdit ? '更新' : '创建'}成功:`, response.data)
-    } else {
-      errorMessage.value = response?.detail || response?.message || `${isEdit ? '更新' : '创建'}失败`
+    }else {
+      console.log('响应状态码不匹配，显示失败信息')
+      // 优先显示后端返回的具体错误信息
+      if (response?.detail) {
+        errorMessage.value = response.detail
+      } else if (response?.message) {
+        errorMessage.value = response.message
+      } else {
+        errorMessage.value = `${isEdit ? '' : ''}请刷新`
+      }
     }
   } catch (error) {
     console.error(`${isEdit ? '更新' : '创建'}分类失败:`, error)
@@ -426,7 +439,7 @@ const showCategoryPath = async (categoryId) => {
       categoryPath.value = response
     } else if (response && response.data && Array.isArray(response.data)) {
       categoryPath.value = response.data
-    } else if (response && response.code === 0 && Array.isArray(response.data)) {
+    } else if (response && response.code === 200 && Array.isArray(response.data)) {
       categoryPath.value = response.data
     } else {
       console.warn('未知的路径响应格式:', response)

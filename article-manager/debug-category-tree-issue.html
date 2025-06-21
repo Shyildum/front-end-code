@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分类树API调试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .debug-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .code {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #005999; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 分类树显示问题调试工具</h1>
+    
+    <div class="debug-section">
+        <h2>🔧 认证状态检查</h2>
+        <button onclick="setupTestUser()">设置测试用户</button>
+        <button onclick="checkAuthStatus()">检查认证状态</button>
+        <div id="auth-status"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>🌳 分类API测试</h2>
+        <div class="grid">
+            <div>
+                <h4>获取分类树</h4>
+                <button onclick="testCategoryTree()">测试分类树API</button>
+                <div id="category-tree-result"></div>
+            </div>
+            <div>
+                <h4>获取所有分类</h4>
+                <button onclick="testGetCategories()">测试获取分类API</button>
+                <div id="categories-result"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="debug-section">
+        <h2>📝 文章API测试</h2>
+        <button onclick="testArticlesAPI()">测试文章API</button>
+        <div id="articles-result"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>🎯 Vue组件状态检查</h2>
+        <button onclick="checkVueState()">检查Vue组件状态</button>
+        <button onclick="forceReloadCategories()">强制重新加载分类</button>
+        <div id="vue-state-result"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>🚀 创建测试分类</h2>
+        <button onclick="createTestCategories()">创建测试分类数据</button>
+        <div id="create-result"></div>
+    </div>
+
+    <script>
+        let debugInfo = {
+            userId: null,
+            apiResults: {}
+        };
+
+        // 设置测试用户
+        function setupTestUser() {
+            const testUserId = 'test-user-' + Date.now();
+            localStorage.setItem('userId', testUserId);
+            debugInfo.userId = testUserId;
+            
+            document.getElementById('auth-status').innerHTML = 
+                '<div class="status success">✅ 已设置测试用户ID: ' + testUserId + '</div>';
+            
+            console.log('✅ 测试用户ID已设置:', testUserId);
+        }
+
+        // 检查认证状态
+        function checkAuthStatus() {
+            const userId = localStorage.getItem('userId');
+            const userInfo = localStorage.getItem('user');
+            
+            const result = {
+                hasUserId: !!userId,
+                userId: userId,
+                hasUserInfo: !!userInfo,
+                userInfo: userInfo ? JSON.parse(userInfo) : null
+            };
+            
+            debugInfo.authStatus = result;
+            
+            document.getElementById('auth-status').innerHTML = `
+                <div class="status ${result.hasUserId ? 'success' : 'error'}">
+                    ${result.hasUserId ? '✅' : '❌'} 认证状态检查
+                </div>
+                <div class="code">${JSON.stringify(result, null, 2)}</div>
+            `;
+        }
+
+        // 测试分类树API
+        async function testCategoryTree() {
+            const resultDiv = document.getElementById('category-tree-result');
+            resultDiv.innerHTML = '<div class="status info">🔄 正在测试分类树API...</div>';
+            
+            try {
+                const userId = localStorage.getItem('userId');
+                if (!userId) {
+                    throw new Error('未找到userId，请先设置测试用户');
+                }
+
+                console.log('🧪 测试分类树API，userId:', userId);
+                
+                const response = await fetch('/api/v1/categories/tree/0', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Id': userId
+                    }
+                });
+                
+                console.log('📡 分类树API响应状态:', response.status, response.statusText);
+                
+                const responseData = await response.json();
+                
+                const result = {
+                    success: response.ok,
+                    status: response.status,
+                    statusText: response.statusText,
+                    data: responseData,
+                    isArray: Array.isArray(responseData),
+                    length: Array.isArray(responseData) ? responseData.length : 0,
+                    timestamp: new Date().toISOString()
+                };
+                
+                debugInfo.apiResults.categoryTree = result;
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="status success">✅ 分类树API调用成功</div>
+                        <p><strong>数据类型:</strong> ${Array.isArray(responseData) ? '数组' : typeof responseData}</p>
+                        <p><strong>分类数量:</strong> ${result.length}</p>
+                        <div class="code">${JSON.stringify(result.data, null, 2)}</div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status error">❌ 分类树API调用失败 (${response.status})</div>
+                        <div class="code">${JSON.stringify(result, null, 2)}</div>
+                    `;
+                }
+                
+            } catch (error) {
+                const result = {
+                    success: false,
+                    error: error.message,
+                    timestamp: new Date().toISOString()
+                };
+                
+                debugInfo.apiResults.categoryTree = result;
+                
+                resultDiv.innerHTML = `
+                    <div class="status error">❌ 分类树API调用异常</div>
+                    <div class="code">${JSON.stringify(result, null, 2)}</div>
+                `;
+                
+                console.error('❌ 分类树API测试失败:', error);
+            }
+        }
+
+        // 测试获取分类API
+        async function testGetCategories() {
+            const resultDiv = document.getElementById('categories-result');
+            resultDiv.innerHTML = '<div class="status info">🔄 正在测试获取分类API...</div>';
+            
+            try {
+                const userId = localStorage.getItem('userId');
+                if (!userId) {
+                    throw new Error('未找到userId，请先设置测试用户');
+                }
+
+                console.log('🧪 测试获取所有分类API');
+                
+                const response = await fetch('/api/v1/categories/', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Id': userId
+                    }
+                });
+                
+                const responseData = await response.json();
+                
+                const result = {
+                    success: response.ok,
+                    status: response.status,
+                    data: responseData,
+                    timestamp: new Date().toISOString()
+                };
+                
+                debugInfo.apiResults.getCategories = result;
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="status success">✅ 获取分类API调用成功</div>
+                        <div class="code">${JSON.stringify(result, null, 2)}</div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status error">❌ 获取分类API调用失败</div>
+                        <div class="code">${JSON.stringify(result, null, 2)}</div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="status error">❌ 获取分类API调用异常: ${error.message}</div>
+                `;
+            }
+        }
+
+        // 测试文章API
+        async function testArticlesAPI() {
+            const resultDiv = document.getElementById('articles-result');
+            resultDiv.innerHTML = '<div class="status info">🔄 正在测试文章API...</div>';
+            
+            try {
+                const userId = localStorage.getItem('userId');
+                if (!userId) {
+                    throw new Error('未找到userId，请先设置测试用户');
+                }
+
+                const response = await fetch('/api/v1/articles/1/10', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Id': userId
+                    }
+                });
+                
+                const responseData = await response.json();
+                
+                const result = {
+                    success: response.ok,
+                    status: response.status,
+                    data: responseData,
+                    timestamp: new Date().toISOString()
+                };
+                
+                debugInfo.apiResults.articles = result;
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="status success">✅ 文章API调用成功</div>
+                        <div class="code">${JSON.stringify(result, null, 2)}</div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status error">❌ 文章API调用失败</div>
+                        <div class="code">${JSON.stringify(result, null, 2)}</div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="status error">❌ 文章API调用异常: ${error.message}</div>
+                `;
+            }
+        }
+
+        // 检查Vue组件状态
+        function checkVueState() {
+            const resultDiv = document.getElementById('vue-state-result');
+            
+            try {
+                // 检查DOM元素
+                const categorySection = document.querySelector('.tree-section');
+                const categoryList = document.querySelector('.tree-list');
+                const debugInfo = document.querySelector('.debug-info');
+                
+                const result = {
+                    hasCategorySection: !!categorySection,
+                    hasCategoryList: !!categoryList,
+                    hasDebugInfo: !!debugInfo,
+                    categoryItems: categoryList ? categoryList.children.length : 0,
+                    localStorage: {
+                        userId: localStorage.getItem('userId'),
+                        user: localStorage.getItem('user')
+                    }
+                };
+                
+                resultDiv.innerHTML = `
+                    <div class="status info">🎯 Vue组件状态检查结果</div>
+                    <div class="code">${JSON.stringify(result, null, 2)}</div>
+                `;
+                
+                // 如果页面上有调试信息元素，说明分类数据为空
+                if (debugInfo) {
+                    resultDiv.innerHTML += '<div class="status warning">⚠️ 检测到分类数据为空，显示了调试信息</div>';
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="status error">❌ Vue状态检查异常: ${error.message}</div>
+                `;
+            }
+        }
+
+        // 强制重新加载分类
+        function forceReloadCategories() {
+            try {
+                // 尝试调用全局的重新加载方法
+                if (window.parent && window.parent.location.href.includes('localhost:5173')) {
+                    // 如果是在iframe中，向父窗口发送消息
+                    window.parent.postMessage({ type: 'force-reload-categories' }, '*');
+                } else {
+                    // 直接调用页面上的方法
+                    window.location.reload();
+                }
+                
+                document.getElementById('vue-state-result').innerHTML += 
+                    '<div class="status info">🔄 已触发强制重新加载</div>';
+                    
+            } catch (error) {
+                document.getElementById('vue-state-result').innerHTML += 
+                    '<div class="status error">❌ 强制重新加载失败: ' + error.message + '</div>';
+            }
+        }
+
+        // 创建测试分类数据
+        async function createTestCategories() {
+            const resultDiv = document.getElementById('create-result');
+            resultDiv.innerHTML = '<div class="status info">🔄 正在创建测试分类...</div>';
+            
+            try {
+                const userId = localStorage.getItem('userId');
+                if (!userId) {
+                    throw new Error('未找到userId，请先设置测试用户');
+                }
+
+                const testCategories = [
+                    { name: '技术文章', parentId: null },
+                    { name: '生活随笔', parentId: null },
+                    { name: '学习笔记', parentId: null }
+                ];
+
+                const results = [];
+                
+                for (const category of testCategories) {
+                    try {
+                        const response = await fetch('/api/v1/categories', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-User-Id': userId
+                            },
+                            body: JSON.stringify(category)
+                        });
+                        
+                        const responseData = await response.json();
+                        results.push({
+                            category: category.name,
+                            success: response.ok,
+                            status: response.status,
+                            data: responseData
+                        });
+                        
+                    } catch (error) {
+                        results.push({
+                            category: category.name,
+                            success: false,
+                            error: error.message
+                        });
+                    }
+                }
+                
+                const successCount = results.filter(r => r.success).length;
+                
+                resultDiv.innerHTML = `
+                    <div class="status ${successCount > 0 ? 'success' : 'error'}">
+                        ${successCount > 0 ? '✅' : '❌'} 创建了 ${successCount}/${testCategories.length} 个测试分类
+                    </div>
+                    <div class="code">${JSON.stringify(results, null, 2)}</div>
+                `;
+                
+                if (successCount > 0) {
+                    resultDiv.innerHTML += '<div class="status info">💡 现在可以重新测试分类树API了</div>';
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="status error">❌ 创建测试分类失败: ${error.message}</div>
+                `;
+            }
+        }
+
+        // 页面加载时自动检查认证状态
+        window.addEventListener('load', () => {
+            console.log('🔍 分类树调试工具已加载');
+            checkAuthStatus();
+        });
+
+        // 暴露调试信息到全局
+        window.debugInfo = debugInfo;
+        
+        console.log('🎯 分类树调试工具加载完成，使用以下方法进行调试:');
+        console.log('- setupTestUser(): 设置测试用户');
+        console.log('- testCategoryTree(): 测试分类树API');
+        console.log('- createTestCategories(): 创建测试分类');
+    </script>
+</body>
+</html>

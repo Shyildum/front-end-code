@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown渲染集成测试</title>
+</head>
+<body>
+    <h1>Markdown渲染集成测试</h1>
+    <p>此文件用于测试ArticleManager.vue中的Markdown渲染功能是否正常工作。</p>
+    
+    <h2>测试步骤：</h2>
+    <ol>
+        <li>启动项目：<code>npm run dev</code></li>
+        <li>登录到文章管理系统</li>
+        <li>选择一篇文章或创建新文章，内容包含Markdown格式和##标签</li>
+        <li>观察文章内容是否以Markdown格式正确渲染</li>
+        <li>检查##标签是否显示为蓝色</li>
+    </ol>
+    
+    <h2>测试用的Markdown内容示例：</h2>
+    <pre><code>
+# 这是一级标题
+
+## 这是二级标题
+
+这是一段普通文本，包含 **粗体** 和 *斜体* 文字。
+
+这里是一些特殊标签：##技术 ##Vue ##前端开发
+
+### 代码块示例：
+
+```javascript
+function hello() {
+    console.log("Hello, World!");
+}
+```
+
+### 列表示例：
+
+1. 第一项
+2. 第二项
+3. 第三项
+
+- 无序列表项1
+- 无序列表项2
+
+### 引用示例：
+
+> 这是一段引用文字
+> 可以跨越多行
+
+### 链接示例：
+
+[GitHub](https://github.com)
+    </code></pre>
+    
+    <h2>预期结果：</h2>
+    <ul>
+        <li>Markdown语法被正确渲染为HTML格式</li>
+        <li>##开头的标签显示为蓝色</li>
+        <li>样式美观，与原有界面风格一致</li>
+        <li>代码块、列表、引用等元素格式正确</li>
+    </ul>
+    
+    <h2>完成的修改：</h2>
+    <ul>
+        <li>✅ 在ArticleManager.vue中导入MarkdownRenderer组件</li>
+        <li>✅ 将文章内容显示从v-html替换为MarkdownRenderer组件</li>
+        <li>✅ 移除不再需要的displayContent计算属性</li>
+        <li>✅ 将##标签样式迁移到MarkdownRenderer组件</li>
+        <li>✅ 在MarkdownRenderer中添加##标签预处理逻辑</li>
+    </ul>
+</body>
+</html>

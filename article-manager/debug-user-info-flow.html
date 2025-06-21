@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户信息数据流调试</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 20px; }
+        .debug-step { background: #f8f9fa; padding: 15px; margin: 10px 0; border-left: 4px solid #3b82f6; }
+        .expected { color: #10b981; }
+        .actual { color: #ef4444; }
+        .code { background: #f1f1f1; padding: 5px; border-radius: 3px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>🔍 用户信息数据流调试指南</h1>
+    
+    <div class="debug-step">
+        <h3>步骤 1：检查ArticleManager.vue的数据流</h3>
+        <p>打开浏览器开发者工具，在点击"编辑个人资料"时观察以下日志：</p>
+        <ul>
+            <li class="expected">✅ 用户信息已刷新，当前用户信息: {用户对象}</li>
+            <li class="expected">🔧 即将传递给UserProfileEditor的用户信息: {用户对象}</li>
+            <li class="expected">🔍 从API获取用户信息，userId: {用户ID}</li>
+            <li class="expected">✅ 成功获取用户信息: {API返回的用户对象}</li>
+        </ul>
+    </div>
+
+    <div class="debug-step">
+        <h3>步骤 2：检查UserProfileEditor.vue的数据流</h3>
+        <p>在UserProfileEditor组件中观察以下日志：</p>
+        <ul>
+            <li class="expected">🚀 UserProfileEditor: 组件挂载，props.userInfo: {用户对象}</li>
+            <li class="expected">👀 UserProfileEditor: props.userInfo 变化: {用户对象}</li>
+            <li class="expected">📝 UserProfileEditor: 从props同步表单数据</li>
+            <li class="actual">⚠️ 如果看到: ℹ️ UserProfileEditor: 已有props用户信息，跳过API调用</li>
+        </ul>
+    </div>
+
+    <div class="debug-step">
+        <h3>步骤 3：检查界面显示</h3>
+        <p>在个人信息编辑器中应该看到：</p>
+        <ul>
+            <li>✅ 数据来源：API (通过props) - 绿色文字</li>
+            <li>用户名字段：从API获取的最新username</li>
+            <li>邮箱字段：从API获取的最新email</li>
+            <li>昵称字段：从API获取的最新nickname</li>
+            <li>个人简介字段：从API获取的最新profile</li>
+        </ul>
+    </div>
+
+    <div class="debug-step">
+        <h3>可能的问题和解决方案</h3>
+        
+        <h4>问题 1：仍然显示"数据来源：localStorage"</h4>
+        <p><strong>原因：</strong> currentUserInfo没有正确设置或为null</p>
+        <p><strong>解决：</strong> 检查ArticleManager.vue中loadUserInfo函数的返回值和currentUserInfo.value的设置</p>
+        
+        <h4>问题 2：API调用失败</h4>
+        <p><strong>原因：</strong> 网络问题或API接口错误</p>
+        <p><strong>解决：</strong> 检查Network面板中的API请求，确认请求格式和响应</p>
+        
+        <h4>问题 3：用户信息未更新</h4>
+        <p><strong>原因：</strong> props传递有问题或watch没有触发</p>
+        <p><strong>解决：</strong> 检查Vue开发者工具中的组件props</p>
+    </div>
+
+    <div class="debug-step">
+        <h3>手动测试API调用</h3>
+        <p>在浏览器控制台中运行以下代码，测试API是否工作：</p>
+        <div class="code">
+// 测试API调用<br>
+const userId = localStorage.getItem('userId');<br>
+console.log('UserId:', userId);<br>
+<br>
+import { authAPI } from './src/services/api.js';<br>
+authAPI.getUserInfo(userId).then(response => {<br>
+&nbsp;&nbsp;console.log('API Response:', response);<br>
+}).catch(error => {<br>
+&nbsp;&nbsp;console.error('API Error:', error);<br>
+});
+        </div>
+    </div>
+
+    <div class="debug-step">
+        <h3>最终验证</h3>
+        <p>如果一切正常，你应该看到：</p>
+        <ol>
+            <li>控制台中有API调用的成功日志</li>
+            <li>个人信息编辑器显示"数据来源：API (通过props)"</li>
+            <li>用户名和邮箱字段显示最新的API数据</li>
+            <li>昵称和简介字段可以编辑并保存</li>
+        </ol>
+    </div>
+
+    <p><strong>注意：</strong> 如果问题仍然存在，请检查localStorage中是否有"userId"和"user"数据，以及API接口是否正确响应。</p>
+</body>
+</html>

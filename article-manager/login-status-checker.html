@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录状态检查工具</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .check-item { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-left: 4px solid #3b82f6; 
+            border-radius: 5px;
+        }
+        .success { border-color: #10b981; background: #f0fdf4; }
+        .warning { border-color: #f59e0b; background: #fffbeb; }
+        .error { border-color: #ef4444; background: #fef2f2; }
+        .code { 
+            background: #f1f1f1; 
+            padding: 10px; 
+            border-radius: 5px; 
+            font-family: 'Courier New', monospace; 
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #2563eb; }
+        .result { 
+            margin: 10px 0; 
+            padding: 10px; 
+            border-radius: 5px; 
+            font-family: monospace;
+        }
+        .result.success { background: #d1fae5; color: #065f46; }
+        .result.error { background: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 登录状态检查工具</h1>
+        <p>这个工具会帮助你检查为什么用户信息显示为"Demo User"</p>
+
+        <div class="check-item">
+            <h3>第一步：检查localStorage中的登录信息</h3>
+            <button onclick="checkLocalStorage()">检查localStorage</button>
+            <div id="localStorage-result" class="result"></div>
+        </div>
+
+        <div class="check-item">
+            <h3>第二步：测试API调用</h3>
+            <button onclick="testAPI()">测试获取用户信息API</button>
+            <div id="api-result" class="result"></div>
+        </div>
+
+        <div class="check-item">
+            <h3>第三步：检查网络请求</h3>
+            <p>打开浏览器开发者工具 → Network选项卡，然后：</p>
+            <ol>
+                <li>点击"编辑个人资料"</li>
+                <li>查看是否有 <code>/api/v1/users/info/{userId}</code> 的请求</li>
+                <li>检查请求的响应状态和内容</li>
+            </ol>
+        </div>
+
+        <div class="check-item">
+            <h3>可能的问题和解决方案</h3>
+            
+            <h4>问题1：没有userId</h4>
+            <div class="code">解决方案：重新登录系统，确保登录成功后localStorage中有userId</div>
+            
+            <h4>问题2：API调用失败</h4>
+            <div class="code">解决方案：
+1. 检查后端服务是否运行
+2. 检查API接口地址是否正确
+3. 检查用户权限是否有效</div>
+            
+            <h4>问题3：API返回空数据</h4>
+            <div class="code">解决方案：
+1. 检查数据库中是否有该用户的信息
+2. 检查API接口是否正确返回用户数据</div>
+        </div>
+
+        <div class="check-item warning">
+            <h3>⚠️ 临时解决方案</h3>
+            <p>如果API有问题，可以手动设置测试用户信息：</p>
+            <button onclick="setTestUser()">设置测试用户信息</button>
+            <div id="test-user-result" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        function checkLocalStorage() {
+            const result = document.getElementById('localStorage-result');
+            
+            try {
+                const userId = localStorage.getItem('userId');
+                const user = localStorage.getItem('user');
+                const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+                
+                let html = '<h4>localStorage内容:</h4>';
+                html += `<div><strong>userId:</strong> ${userId || '❌ 不存在'}</div>`;
+                html += `<div><strong>user:</strong> ${user ? '✅ 存在' : '❌ 不存在'}</div>`;
+                html += `<div><strong>token:</strong> ${token ? '✅ 存在' : '❌ 不存在'}</div>`;
+                
+                if (user) {
+                    try {
+                        const userData = JSON.parse(user);
+                        html += '<h4>用户信息详情:</h4>';
+                        html += `<pre>${JSON.stringify(userData, null, 2)}</pre>`;
+                    } catch (e) {
+                        html += '<div>❌ 用户信息JSON格式错误</div>';
+                    }
+                }
+                
+                result.innerHTML = html;
+                result.className = 'result ' + (userId ? 'success' : 'error');
+                
+            } catch (error) {
+                result.innerHTML = `❌ 检查localStorage失败: ${error.message}`;
+                result.className = 'result error';
+            }
+        }
+
+        async function testAPI() {
+            const result = document.getElementById('api-result');
+            
+            try {
+                const userId = localStorage.getItem('userId');
+                if (!userId) {
+                    result.innerHTML = '❌ 没有userId，无法测试API';
+                    result.className = 'result error';
+                    return;
+                }
+                
+                result.innerHTML = '🔄 正在测试API调用...';
+                result.className = 'result';
+                
+                // 手动构建API请求
+                const response = await fetch(`/api/v1/users/info/${userId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Id': userId
+                    }
+                });
+                
+                const data = await response.json();
+                
+                let html = `<h4>API响应 (状态: ${response.status}):</h4>`;
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                
+                result.innerHTML = html;
+                result.className = 'result ' + (response.ok && data.code === 0 ? 'success' : 'error');
+                
+            } catch (error) {
+                result.innerHTML = `❌ API测试失败: ${error.message}`;
+                result.className = 'result error';
+            }
+        }
+
+        function setTestUser() {
+            const result = document.getElementById('test-user-result');
+            
+            try {
+                const testUser = {
+                    userId: 1,
+                    username: 'test_user',
+                    email: 'test@example.com',
+                    nickname: '测试用户',
+                    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=64&h=64&fit=crop&crop=face',
+                    profile: '这是一个测试用户',
+                    createTime: new Date().toISOString(),
+                    updateTime: new Date().toISOString()
+                };
+                
+                localStorage.setItem('userId', '1');
+                localStorage.setItem('user', JSON.stringify(testUser));
+                
+                result.innerHTML = '✅ 测试用户信息已设置，请刷新页面查看效果';
+                result.className = 'result success';
+                
+            } catch (error) {
+                result.innerHTML = `❌ 设置测试用户失败: ${error.message}`;
+                result.className = 'result error';
+            }
+        }
+
+        // 页面加载时自动检查
+        window.onload = function() {
+            checkLocalStorage();
+        };
+    </script>
+</body>
+</html>
